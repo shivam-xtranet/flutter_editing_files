@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_editing_files/doc_editor.dart';
+import 'package:flutter_editing_files/doc_editor_html.dart';
 import 'package:flutter_editing_files/excel_editor.dart';
 
 void main() {
@@ -87,7 +88,7 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: ExcelEditor(),
+      body: DocxEditorScreen(),
       floatingActionButton: FloatingActionButton(
         onPressed: _incrementCounter,
         tooltip: 'Increment',
