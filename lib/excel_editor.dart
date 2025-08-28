@@ -5,7 +5,8 @@ import 'package:pluto_grid/pluto_grid.dart';
 import 'dart:html' as html; // for web download
 
 class ExcelEditor extends StatefulWidget {
-  const ExcelEditor({Key? key}) : super(key: key);
+  String url;
+  ExcelEditor({Key? key, required this.url}) : super(key: key);
 
   @override
   State<ExcelEditor> createState() => _ExcelEditorState();
@@ -19,8 +20,7 @@ class _ExcelEditorState extends State<ExcelEditor> {
   @override
   void initState() {
     super.initState();
-    loadExcelFromUrl(
-        "https://res.cloudinary.com/dlmt4hsgw/raw/upload/v1756282773/testappis_ixxfc9.xlsx");
+    loadExcelFromUrl("${widget.url}");
   }
 
   Future<void> loadExcelFromUrl(String url) async {
@@ -53,7 +53,8 @@ class _ExcelEditorState extends State<ExcelEditor> {
               cells: {
                 for (int c = 0; c < sheetData[r].length; c++)
                   'col$c': PlutoCell(
-                      value: sheetData[r][c]?.value?.toString() ?? ''),
+                    value: sheetData[r][c]?.value?.toString() ?? '',
+                  ),
               },
             ),
           );
@@ -70,7 +71,10 @@ class _ExcelEditorState extends State<ExcelEditor> {
   }
 
   void saveExcelWeb(
-      List<PlutoRow> rows, List<PlutoColumn> columns, String sheetName) {
+    List<PlutoRow> rows,
+    List<PlutoColumn> columns,
+    String sheetName,
+  ) {
     final excel = Excel.createExcel();
     final sheet = excel[sheetName];
 
@@ -88,49 +92,50 @@ class _ExcelEditorState extends State<ExcelEditor> {
     final bytes = excel.encode()!;
     final blob = html.Blob([bytes]);
     final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute("download", "edited.xlsx")
-      ..click();
+    final anchor =
+        html.AnchorElement(href: url)
+          ..setAttribute("download", "edited.xlsx")
+          ..click();
     html.Url.revokeObjectUrl(url);
   }
 
   // 👉 Add new empty row
   void addRow() {
-  if (stateManager == null || columns.isEmpty) return;
+    if (stateManager == null || columns.isEmpty) return;
 
-  // Create row cells
-  final Map<String, PlutoCell> cells = {
-    for (final col in stateManager!.columns) col.field: PlutoCell(value: "")
-  };
+    // Create row cells
+    final Map<String, PlutoCell> cells = {
+      for (final col in stateManager!.columns) col.field: PlutoCell(value: ""),
+    };
 
-  final newRow = PlutoRow(cells: cells);
+    final newRow = PlutoRow(cells: cells);
 
-  // Add via stateManager
-  stateManager!.appendRows([newRow]);
-}
-
-void addColumn() {
-  if (stateManager == null) return;
-
-  final colIndex = stateManager!.columns.length;
-  final newColumn = PlutoColumn(
-    title: 'Column $colIndex',
-    field: 'col$colIndex',
-    type: PlutoColumnType.text(),
-  );
-
-  // Insert column via stateManager
-  stateManager!.insertColumns(colIndex, [newColumn]);
-
-  // Set initial value for each row using stateManager.changeCellValue
-  for (var row in stateManager!.rows) {
-    stateManager!.changeCellValue(
-      row.cells[newColumn.field]!, // the new cell
-      '', // initial value
-      callOnChangedEvent: false, // optional
-    );
+    // Add via stateManager
+    stateManager!.appendRows([newRow]);
   }
-}
+
+  void addColumn() {
+    if (stateManager == null) return;
+
+    final colIndex = stateManager!.columns.length;
+    final newColumn = PlutoColumn(
+      title: 'Column $colIndex',
+      field: 'col$colIndex',
+      type: PlutoColumnType.text(),
+    );
+
+    // Insert column via stateManager
+    stateManager!.insertColumns(colIndex, [newColumn]);
+
+    // Set initial value for each row using stateManager.changeCellValue
+    for (var row in stateManager!.rows) {
+      stateManager!.changeCellValue(
+        row.cells[newColumn.field]!, // the new cell
+        '', // initial value
+        callOnChangedEvent: false, // optional
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,18 +149,19 @@ void addColumn() {
           ),
         ],
       ),
-      body: columns.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : PlutoGrid(
-              columns: columns,
-              rows: rows,
-              onLoaded: (event) {
-                stateManager = event.stateManager;
-              },
-              onChanged: (PlutoGridOnChangedEvent event) {
-                print("Changed: ${event.value}");
-              },
-            ),
+      body:
+          columns.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : PlutoGrid(
+                columns: columns,
+                rows: rows,
+                onLoaded: (event) {
+                  stateManager = event.stateManager;
+                },
+                onChanged: (PlutoGridOnChangedEvent event) {
+                  print("Changed: ${event.value}");
+                },
+              ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

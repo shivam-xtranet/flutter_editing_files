@@ -65,6 +65,8 @@ class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
   late InAppWebViewController webViewController;
 
+  var _urlController = TextEditingController();
+
   void _incrementCounter() {
     setState(() {
       // This call to setState tells the Flutter framework that something has
@@ -102,12 +104,7 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             ElevatedButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => const ExcelEditor(),
-                  ),
-                );
+                _showUrlDialog(context);
               },
               child: Text('Excel editing'),
             ),
@@ -168,6 +165,67 @@ class _MyHomePageState extends State<MyHomePage> {
       //   tooltip: 'Increment',
       //   child: const Icon(Icons.add),
       // ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+
+  void _showUrlDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('Open File via URL'),
+          content: SingleChildScrollView(
+            child: Container(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min, // ensures compact sizing
+                  children: [
+                    Text(
+                      'Enter the URL of a xlss file:',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: _urlController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'https://example.com/file.xlss',
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop(); // close the dialog
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder:
+                                (context) => ExcelEditor(
+                                  url: _urlController.text.trim(),
+                                ),
+                          ),
+                        );
+
+                        // openWithGoogleViewer(_urlController.text.trim());
+                      },
+                      child: Text('Load'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text('Cancel'),
+            ),
+          ],
+          scrollable: true, // helps if content overflows
+        );
+      },
     );
   }
 }
