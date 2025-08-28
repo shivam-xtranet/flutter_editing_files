@@ -1,174 +1,367 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <base href="$FLUTTER_BASE_HREF">
+  <head>
+    <base href="$FLUTTER_BASE_HREF" />
 
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Flutter + DOCX Editor">
+    <meta charset="UTF-8" />
+    <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
+    <meta name="description" content="Flutter + DOCX Editor" />
 
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="flutter_editing_files">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-  <link rel="icon" type="image/png" href="favicon.png"/>
-  <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="flutter_editing_files" />
+    <link rel="apple-touch-icon" href="icons/Icon-192.png" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="manifest" href="manifest.json" />
 
-  <title>Flutter DOCX Editor</title>
+    <title>Flutter DOCX Editor</title>
 
-  <style>
-    :root{--bg:#0b1020;--ink:#eaf0ff;--muted:#98a2b3;--accent:#5b9aff;--card:#141a33;}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial; background:var(--bg); color:var(--ink)}
-    header{padding:18px 20px;display:flex;gap:12px;align-items:center;border-bottom:1px solid rgba(255,255,255,.08)}
-    header h1{font-size:18px;margin:0;font-weight:650}
-    main{padding:16px;max-width:1100px;margin:auto}
-    .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-    .card{background:var(--card);border:1px solid rgba(255,255,255,.06); border-radius:16px;padding:12px}
-    .toolbar{display:flex;flex-wrap:wrap;gap:8px}
-    button,.btn{background:#1d2647;color:var(--ink);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 12px;cursor:pointer}
-    button:hover,.btn:hover{background:#22305a}
-    input[type="file"], input[type="text"]{background:#0f1630;color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 10px}
-    #editor{min-height:60vh;background:#0f1630;border:1px dashed rgba(255,255,255,.15);border-radius:16px;padding:16px;overflow:auto}
-    #editor:focus{outline:2px solid var(--accent)}
-    .hint{font-size:12px;color:var(--muted)}
-    .spacer{flex:1}
-    .status{font-size:12px;color:var(--muted)}
-    .chip{font-size:12px;padding:4px 8px;border-radius:999px;background:#1a2444;border:1px solid rgba(255,255,255,.08)}
-    a{color:var(--accent)}
-  </style>
-</head>
-<body>
-  <!-- 🔹 DOCX Editor UI -->
-  <header>
-    <h1>DOCX Web Editor</h1>
-    <span class="chip">Zero-install • Works offline</span>
-    <div class="spacer"></div>
-    <span class="status" id="status">Ready</span>
-  </header>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --ink: #eaf0ff;
+        --muted: #98a2b3;
+        --accent: #5b9aff;
+        --card: #141a33;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
+        background: var(--bg);
+        color: var(--ink);
+      }
+      header {
+        padding: 18px 20px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      header h1 {
+        font-size: 18px;
+        margin: 0;
+        font-weight: 650;
+      }
+      main {
+        padding: 16px;
+        max-width: 1100px;
+        margin: auto;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+        padding: 12px;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      button,
+      .btn {
+        background: #1d2647;
+        color: var(--ink);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      button:hover,
+      .btn:hover {
+        background: #22305a;
+      }
+      input[type="file"],
+      input[type="text"] {
+        background: #0f1630;
+        color: var(--ink);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        padding: 8px 10px;
+      }
+      #editor {
+        min-height: 60vh;
+        background: #0f1630;
+        border: 1px dashed rgba(255, 255, 255, 0.15);
+        border-radius: 16px;
+        padding: 16px;
+        overflow: auto;
+      }
+      #editor:focus {
+        outline: 2px solid var(--accent);
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .spacer {
+        flex: 1;
+      }
+      .status {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .chip {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #1a2444;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      a {
+        color: var(--accent);
+      }
 
-  <main>
-    <section class="card" style="margin-bottom:12px">
-      <div class="row">
-        <input id="file" type="file" accept=".docx" />
-        <button id="btnLoadFile">Open</button>
-        <span class="hint">Open a .docx from your computer</span>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <input id="url" type="text" placeholder="https://example.com/sample.docx" style="min-width:360px" />
-        <button id="btnLoadUrl">Open from URL</button>
-        <span class="hint">Note: the URL must allow CORS</span>
-      </div>
-    </section>
+      .page {
+        background: white;
+        color: black;
+        padding: 40px;
+        margin: 20px auto;
+        max-width: 800px;
+        min-height: 1123px; /* A4 height in pixels at 96dpi */
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+        position: relative;
+        page-break-after: always;
+        overflow: hidden;
+      }
 
-    <section class="card" style="margin-bottom:12px">
-      <div class="toolbar">
-        <button data-cmd="bold"><b>B</b></button>
-        <button data-cmd="italic"><i>I</i></button>
-        <button data-cmd="underline"><u>U</u></button>
-        <button data-cmd="insertUnorderedList">• List</button>
-        <button data-cmd="insertOrderedList">1. List</button>
-        <button id="h1">H1</button>
-        <button id="h2">H2</button>
-        <button id="p">Paragraph</button>
-        <div class="spacer"></div>
-        <button id="btnDownloadDocx">Download as DOCX</button>
-        <button id="btnDownloadHtml">Download HTML</button>
-      </div>
-    </section>
+      #editor {
+        padding: 0;
+      }
 
-    <section class="card">
-      <div id="editor" contenteditable="true">
+      @media print {
+        body {
+          background: white;
+          color: black;
+        }
+        .page {
+          box-shadow: none;
+          page-break-after: always;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 🔹 DOCX Editor UI -->
+    <header>
+      <h1>DOCX Web Editor</h1>
+      <span class="chip">Zero-install • Works offline</span>
+      <div class="spacer"></div>
+      <span class="status" id="status">Ready</span>
+    </header>
+
+    <main>
+      <section class="card" style="margin-bottom: 12px">
+        <div class="row">
+          <input id="file" type="file" accept=".docx" />
+          <button id="btnLoadFile">Open</button>
+          <span class="hint">Open a .docx from your computer</span>
+        </div>
+        <div class="row" style="margin-top: 8px">
+          <input
+            id="url"
+            type="text"
+            placeholder="https://example.com/sample.docx"
+            style="min-width: 360px"
+          />
+          <button id="btnLoadUrl">Open from URL</button>
+          <span class="hint">Note: the URL must allow CORS</span>
+        </div>
+      </section>
+
+      <section class="card" style="margin-bottom: 12px">
+        <div class="toolbar">
+          <button id="btnPageBreak">Insert Page Break</button>
+
+          <button data-cmd="bold"><b>B</b></button>
+          <button data-cmd="italic"><i>I</i></button>
+          <button data-cmd="underline"><u>U</u></button>
+          <button data-cmd="insertUnorderedList">• List</button>
+          <button data-cmd="insertOrderedList">1. List</button>
+          <button id="h1">H1</button>
+          <button id="h2">H2</button>
+          <button id="p">Paragraph</button>
+          <div class="spacer"></div>
+          <button id="btnDownloadDocx">Download as DOCX</button>
+          <button id="btnDownloadHtml">Download HTML</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <!-- <div id="editor" contenteditable="true">
         <h2>Paste or load a .docx to begin</h2>
         <p class="hint">You can type here, use the toolbar, then export to DOCX.</p>
-      </div>
-    </section>
-  </main>
+      </div> -->
 
-  <!-- 🔹 JS Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.0/mammoth.browser.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/docx@9.5.1/dist/index.iife.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/docshift@0.0.73/dist/docshift.min.js"></script>
+        <div id="editor" contenteditable="true">
+          <div class="page">
+            <h2>Paste or load a .docx to begin</h2>
+            <p class="hint">
+              You can type here, use the toolbar, then export to DOCX.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
 
-  <!-- 🔹 Your Editor Logic -->
-  <script>
-    const $ = (sel) => document.querySelector(sel);
-    const editor = $('#editor');
-    const statusEl = $('#status');
-    function setStatus(msg){ statusEl.textContent = msg; }
+    <!-- 🔹 JS Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@9.5.1/dist/index.iife.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docshift@0.0.73/dist/docshift.min.js"></script>
 
-    document.querySelectorAll('[data-cmd]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.execCommand(btn.dataset.cmd, false, null);
+    <!-- 🔹 Your Editor Logic -->
+    <script>
+      const $ = (sel) => document.querySelector(sel);
+      const editor = $("#editor");
+      const statusEl = $("#status");
+      function setStatus(msg) {
+        statusEl.textContent = msg;
+      }
+
+      document.querySelectorAll("[data-cmd]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.execCommand(btn.dataset.cmd, false, null);
+          editor.focus();
+        });
+      });
+      $("#h1").addEventListener("click", () => {
+        document.execCommand("formatBlock", false, "h1");
         editor.focus();
       });
-    });
-    $('#h1').addEventListener('click',()=>{document.execCommand('formatBlock', false, 'h1');editor.focus();});
-    $('#h2').addEventListener('click',()=>{document.execCommand('formatBlock', false, 'h2');editor.focus();});
-    $('#p').addEventListener('click',()=>{document.execCommand('formatBlock', false, 'p');editor.focus();});
+      $("#h2").addEventListener("click", () => {
+        document.execCommand("formatBlock", false, "h2");
+        editor.focus();
+      });
+      $("#p").addEventListener("click", () => {
+        document.execCommand("formatBlock", false, "p");
+        editor.focus();
+      });
 
-    $('#btnLoadFile').addEventListener('click', async () => {
-      const fileInput = $('#file');
-      if(!fileInput.files || !fileInput.files[0]){ alert('Choose a .docx file first.'); return; }
-      readDocxFile(fileInput.files[0]);
-    });
+      $("#btnLoadFile").addEventListener("click", async () => {
+        const fileInput = $("#file");
+        if (!fileInput.files || !fileInput.files[0]) {
+          alert("Choose a .docx file first.");
+          return;
+        }
+        readDocxFile(fileInput.files[0]);
+      });
 
-    $('#btnLoadUrl').addEventListener('click', async () => {
-      const url = $('#url').value.trim();
-      if(!url){ alert('Paste a .docx URL'); return; }
-      try{
-        setStatus('Fetching DOCX…');
-        const res = await fetch(url);
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        const buf = await res.arrayBuffer();
-        await renderArrayBuffer(buf);
-        setStatus('Loaded from URL');
-      }catch(err){
-        console.error(err);
-        setStatus('Failed to load (CORS issue).');
+      $("#btnLoadUrl").addEventListener("click", async () => {
+        const url = $("#url").value.trim();
+        if (!url) {
+          alert("Paste a .docx URL");
+          return;
+        }
+        try {
+          setStatus("Fetching DOCX…");
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const buf = await res.arrayBuffer();
+          await renderArrayBuffer(buf);
+          setStatus("Loaded from URL");
+        } catch (err) {
+          console.error(err);
+          setStatus("Failed to load (CORS issue).");
+        }
+      });
+
+      async function readDocxFile(file) {
+        setStatus("Reading " + file.name + "…");
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            await renderArrayBuffer(e.target.result);
+            setStatus("Loaded " + file.name);
+          } catch (err) {
+            console.error(err);
+            setStatus("Error opening file");
+          }
+        };
+        reader.readAsArrayBuffer(file);
       }
-    });
 
-    async function readDocxFile(file){
-      setStatus('Reading '+file.name+'…');
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try{ await renderArrayBuffer(e.target.result); setStatus('Loaded '+file.name); }
-        catch(err){ console.error(err); setStatus('Error opening file'); }
-      };
-      reader.readAsArrayBuffer(file);
-    }
+      async function renderArrayBuffer(arrayBuffer) {
+        const options = {
+          convertImage: mammoth.images.inline((image) =>
+            image.read("base64").then((imgBuf) => ({
+              src: "data:" + image.contentType + ";base64," + imgBuf,
+            }))
+          ),
+        };
+        const result = await mammoth.convertToHtml({ arrayBuffer }, options);
+        const newPage = document.createElement("div");
+        newPage.className = "page";
+        newPage.innerHTML = result.value;
+        editor.innerHTML = "";
+        editor.appendChild(newPage);
+      }
 
-    async function renderArrayBuffer(arrayBuffer){
-      const options = {
-        convertImage: mammoth.images.inline(image =>
-          image.read('base64').then(imgBuf => ({ src: 'data:'+ image.contentType + ';base64,' + imgBuf }))
-        )
-      };
-      const result = await mammoth.convertToHtml({ arrayBuffer }, options);
-      editor.innerHTML = result.value;
-    }
+      $("#btnDownloadDocx").addEventListener("click", () => {
+        try {
+          // Prepare document content
+          const editorClone = editor.cloneNode(true);
 
-    $('#btnDownloadDocx').addEventListener('click', async () => {
-      try {
-        const htmlContent = editor.innerHTML;
-        const docxBlob = await window.docshift.toDocx(htmlContent);
-        saveAs(docxBlob, "edited.docx");
-        setStatus("Exported as DOCX");
-      } catch (err) { console.error(err); setStatus("Export failed"); }
-    });
+          // Unwrap `.page` divs and keep inner content
+          const pages = editorClone.querySelectorAll(".page");
+          let combinedHTML = "";
 
-    $('#btnDownloadHtml').addEventListener('click', () => {
-      const html = "<!DOCTYPE html><html><body>"+editor.innerHTML+"</body></html>";
-      const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
-      saveAs(blob, 'edited.html');
-      setStatus('Saved HTML');
-    });
-  </script>
+          pages.forEach((page, index) => {
+            combinedHTML += page.innerHTML;
+            if (index !== pages.length - 1) {
+              // Add manual page break
+              combinedHTML += '<p style="page-break-after: always;"></p>';
+            }
+          });
 
-  <!-- Flutter entrypoint -->
-  <script src="flutter_bootstrap.js" async></script>
-</body>
+          // Wrap in full HTML structure
+          const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="utf-8"></head>
+        <body>${combinedHTML}</body>
+      </html>
+    `;
+
+          // Convert HTML to DOCX blob using html-docx-js
+          const converted = window.htmlDocx.asBlob(fullHtml);
+          saveAs(converted, "edited.docx");
+          setStatus("Exported as DOCX");
+        } catch (err) {
+          console.error(err);
+          setStatus("Export failed");
+        }
+      });
+
+      $("#btnDownloadHtml").addEventListener("click", () => {
+        const html =
+          "<!DOCTYPE html><html><body>" + editor.innerHTML + "</body></html>";
+        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        saveAs(blob, "edited.html");
+        setStatus("Saved HTML");
+      });
+
+      $("#btnPageBreak").addEventListener("click", () => {
+        const newPage = document.createElement("div");
+        newPage.className = "page";
+        newPage.innerHTML = "<p><br></p>"; // blank paragraph
+        editor.appendChild(newPage);
+        setStatus("Page break inserted");
+        newPage.scrollIntoView({ behavior: "smooth" });
+      });
+    </script>
+
+    <!-- Flutter entrypoint -->
+    <script src="flutter_bootstrap.js" async></script>
+  </body>
 </html>
