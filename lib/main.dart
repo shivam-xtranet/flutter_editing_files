@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_editing_files/doc_editor.dart';
 import 'package:flutter_editing_files/doc_editor_html.dart';
 import 'package:flutter_editing_files/excel_editor.dart';
+import 'package:flutter_editing_files/file_viewer.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,8 +11,6 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-
 
   //sample doc url - https://res.cloudinary.com/dlmt4hsgw/raw/upload/v1756289930/edited_4_yh4wfa.docx
   //sample xlss url - https://res.cloudinary.com/dlmt4hsgw/raw/upload/v1756282773/testappis_ixxfc9.xlsx
@@ -63,6 +63,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  late InAppWebViewController webViewController;
 
   void _incrementCounter() {
     setState(() {
@@ -93,7 +94,75 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: ExcelEditor(),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => const ExcelEditor(),
+                  ),
+                );
+              },
+              child: Text('Excel editing'),
+            ),
+
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder:
+                        (context) => HtmlRenderScreem(
+                          indexFile: "assets/my_canvas_html.html",
+                          isCanvas: true,
+                        ),
+                  ),
+                );
+              },
+              child: Text('Javascript Canvas'),
+            ),
+
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => FileViewerPage(),
+                  ),
+                );
+              },
+              child: Text('File Viewer'),
+            ),
+
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder:
+                        (context) => HtmlRenderScreem(
+                          indexFile: "assets/doc_editor.html",
+                        ),
+                  ),
+                );
+              },
+              child: Text('Doc Editor'),
+            ),
+          ],
+        ),
+      ),
       // floatingActionButton: FloatingActionButton(
       //   onPressed: _incrementCounter,
       //   tooltip: 'Increment',

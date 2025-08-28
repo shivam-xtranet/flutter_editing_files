@@ -40,6 +40,7 @@ dependencies:
   docx_template: ^0.4.0
   http: ^1.5.0
   flutter_inappwebview: ^6.1.5
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

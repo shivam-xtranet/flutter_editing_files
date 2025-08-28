@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+   let canvas, ctx;
+let x = 50;
+let y = 50;
+let dx = 2;
+let dy = 2;
+let radius = 20;
+let animationId;
+let speed = 1;
+
+function initCanvas() {
+  canvas = document.getElementById("myCanvas");
+  if (!canvas) return;
+  ctx = canvas.getContext("2d");
+  animate();
+}
+
+function animate() {
+  animationId = requestAnimationFrame(animate);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = "blue";
+  ctx.fill();
+  ctx.closePath();
+
+  if (x + dx > canvas.width - radius || x + dx < radius) dx = -dx;
+  if (y + dy > canvas.height - radius || y + dy < radius) dy = -dy;
+
+  x += dx * speed;
+  y += dy * speed;
+}
+
+function pauseAnimation() {
+  cancelAnimationFrame(animationId);
+}
+
+function resumeAnimation() {
+  animate();
+}
+
+function setSpeed(newSpeed) {
+  speed = newSpeed;
+}
+
+function showCustomAlert(message) {
+  alert("JS says: new " + message);
+}
+
+
+ </script>
+
+
+<style>
+ #myCanvas {
+        border: 1px solid black;
+        display: block;
+        margin: 20px auto;
+      }
+</style>
+  </head>
+  <body onload="initCanvas()">
+
+    <div width="400" height="400">
+    <canvas id="myCanvas" width="400" height="400"></canvas>
+
+
+    </div>
+
+
+    </script>
+  </body>
+</html>
