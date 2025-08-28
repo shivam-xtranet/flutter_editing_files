@@ -196,17 +196,24 @@ class _MyHomePageState extends State<MyHomePage> {
                     SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.of(dialogContext).pop(); // close the dialog
+                        if (_urlController.text.trim().isEmpty ||
+                            !_urlController.text.trim().startsWith("http")) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Please enter a valid URL')),
+                          );
+                        } else {
+                          Navigator.of(dialogContext).pop(); // close the dialog
 
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                            builder:
-                                (context) => ExcelEditor(
-                                  url: _urlController.text.trim(),
-                                ),
-                          ),
-                        );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder:
+                                  (context) => ExcelEditor(
+                                    url: _urlController.text.trim(),
+                                  ),
+                            ),
+                          );
+                        }
 
                         // openWithGoogleViewer(_urlController.text.trim());
                       },
