@@ -18,7 +18,7 @@ class _HtmlRenderScreemState extends State<HtmlRenderScreem> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("DOCX Editor")),
+      appBar: AppBar(title: const Text("Editor")),
       body: Column(
         children: [
           // WebView (always shown)

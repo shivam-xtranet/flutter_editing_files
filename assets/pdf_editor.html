@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PDF with Editable Annotations</title>
+    <style>
+      #container {
+        position: relative;
+        max-width: 800px;
+        margin: 20px auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+      }
+      .page-container {
+        position: relative;
+        margin-bottom: 30px;
+      }
+      canvas {
+        display: block;
+        border: 1px solid #999;
+        max-width: 100%;
+      }
+      .annotation-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* disable pointer events on container to allow canvas interaction */
+      }
+      .annotation {
+        position: absolute;
+        background: rgba(255, 255, 0, 0.5);
+        border: 1px dashed #ccc;
+        padding: 4px 8px;
+        cursor: move;
+        pointer-events: auto; /* enable interaction on annotation */
+        user-select: text;
+        min-width: 60px;
+        min-height: 20px;
+        resize: both;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <input type="file" id="fileInput" accept="application/pdf" />
+    <button id="btnLoad">Load PDF</button>
+    <button id="btnAddAnnotation">Add Annotation</button>
+    <button id="btnExport">Export PDF</button>
+
+    <div id="container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+      const container = document.getElementById("container");
+      const fileInput = document.getElementById("fileInput");
+      const btnLoad = document.getElementById("btnLoad");
+      const btnAddAnnotation = document.getElementById("btnAddAnnotation");
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+
+      let pdfDoc = null;
+      let currentScale = 1.5;
+      let pages = []; // store page info {container, canvas, annotationLayer, viewport}
+
+      btnLoad.addEventListener("click", async () => {
+        if (!fileInput.files || !fileInput.files[0]) {
+          alert("Please select a PDF file first");
+          return;
+        }
+
+        const file = fileInput.files[0];
+        const arrayBuffer = await file.arrayBuffer();
+
+        container.innerHTML = "";
+        pages = [];
+
+        pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+          const page = await pdfDoc.getPage(pageNum);
+
+          const viewport = page.getViewport({ scale: currentScale });
+
+          const pageContainer = document.createElement("div");
+          pageContainer.className = "page-container";
+          pageContainer.style.width = viewport.width + "px";
+          pageContainer.style.height = viewport.height + "px";
+          pageContainer.style.position = "relative";
+
+          const canvas = document.createElement("canvas");
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          canvas.style.display = "block";
+
+          pageContainer.appendChild(canvas);
+
+          const annotationLayer = document.createElement("div");
+          annotationLayer.className = "annotation-layer";
+          annotationLayer.style.width = viewport.width + "px";
+          annotationLayer.style.height = viewport.height + "px";
+
+          pageContainer.appendChild(annotationLayer);
+
+          container.appendChild(pageContainer);
+
+          const ctx = canvas.getContext("2d");
+          await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+          pages.push({ pageContainer, canvas, annotationLayer, viewport });
+        }
+      });
+
+      btnAddAnnotation.addEventListener("click", () => {
+        if (pages.length === 0) {
+          alert("Load a PDF first!");
+          return;
+        }
+        // Add annotation to the first page for demo
+        const { annotationLayer } = pages[0];
+
+        const annotation = document.createElement("div");
+        annotation.className = "annotation";
+        annotation.contentEditable = true;
+        annotation.style.top = "20px";
+        annotation.style.left = "20px";
+        annotation.style.width = "120px";
+        annotation.style.height = "40px";
+        annotation.textContent = "Edit me";
+
+        makeDraggable(annotation);
+
+        annotationLayer.appendChild(annotation);
+        annotation.focus();
+      });
+
+      const btnExport = document.getElementById("btnExport");
+
+      btnExport.addEventListener("click", async () => {
+        if (pages.length === 0) {
+          alert("Load a PDF and add annotations first!");
+          return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          unit: "px",
+          format: [pages[0].viewport.width, pages[0].viewport.height],
+        });
+
+        for (let i = 0; i < pages.length; i++) {
+          const page = pages[i];
+          // Merge canvas + annotations by rendering page container div
+          const pageContainer = page.pageContainer;
+
+          // Use html2canvas to capture the page + annotations
+          const canvas = await html2canvas(pageContainer, {
+            scale: 2, // increase quality
+            useCORS: true,
+            backgroundColor: "#fff",
+            logging: false,
+          });
+
+          const imgData = canvas.toDataURL("image/png");
+
+          if (i > 0) {
+            pdf.addPage([page.viewport.width, page.viewport.height]);
+          }
+
+          pdf.addImage(
+            imgData,
+            "PNG",
+            0,
+            0,
+            page.viewport.width,
+            page.viewport.height
+          );
+        }
+
+        pdf.save("annotated.pdf");
+      });
+
+      // Make annotation draggable
+      function makeDraggable(el) {
+        let isDragging = false;
+        let startX, startY, origX, origY;
+
+        el.addEventListener("mousedown", (e) => {
+          if (e.target !== el) return; // only drag if clicked directly on div, not child text nodes
+          isDragging = true;
+          startX = e.clientX;
+          startY = e.clientY;
+
+          const rect = el.getBoundingClientRect();
+          origX = rect.left;
+          origY = rect.top;
+
+          // Need to subtract parent's offset:
+          const parentRect = el.parentElement.getBoundingClientRect();
+          origX -= parentRect.left;
+          origY -= parentRect.top;
+
+          el.style.cursor = "grabbing";
+
+          e.preventDefault();
+        });
+
+        window.addEventListener("mousemove", (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+
+          let newX = origX + dx;
+          let newY = origY + dy;
+
+          // Clamp within parent bounds
+          const parent = el.parentElement;
+          const parentRect = parent.getBoundingClientRect();
+          const elRect = el.getBoundingClientRect();
+
+          newX = Math.max(0, Math.min(newX, parentRect.width - elRect.width));
+          newY = Math.max(0, Math.min(newY, parentRect.height - elRect.height));
+
+          el.style.left = newX + "px";
+          el.style.top = newY + "px";
+        });
+
+        window.addEventListener("mouseup", () => {
+          if (isDragging) {
+            isDragging = false;
+            el.style.cursor = "move";
+          }
+        });
+
+        // Initialize cursor style
+        el.style.cursor = "move";
+      }
+    </script>
+  </body>
+</html>

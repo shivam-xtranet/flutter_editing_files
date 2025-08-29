@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css"
+    />
+    <meta charset="UTF-8" />
+    <title>Form.io Integration</title>
+    <script src="https://cdn.form.io/js/formio.embed.js"></script>
+    <!-- 
+    <link
+      rel="stylesheet"
+      href="https://cdn.form.io/formiojs/formio.full.min.css"
+    /> -->
+  </head>
+
+  <style>
+    #formio {
+      width: 800px;
+      height: 800px;
+      margin: 40px auto; /* centers the form horizontally */
+      border: 1px solid #ccc;
+      padding: 20px;
+      overflow: auto; /* in case form is taller than 800px */
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      background-color: #fff;
+      border-radius: 8px;
+    }
+  </style>
+  <body>
+    <h1>Embedded Form.io Form</h1>
+
+    <!-- Container where the form will be rendered -->
+    <div id="formio"></div>
+
+    <script>
+      const formJson = {
+        synergyTableMapId: "",
+        components: [
+          {
+            label: "First Name",
+            tableView: true,
+            validate: {
+              required: true,
+            },
+            key: "FirstName",
+            type: "textfield",
+            input: true,
+            columnMetadataId: "eeb2ea06-dea8-419d-9e38-b743db45a25b",
+          },
+          {
+            label: "Last Name",
+            tableView: true,
+            validate: {
+              required: true,
+            },
+            key: "LastName",
+            type: "textfield",
+            input: true,
+            columnMetadataId: "4e5eda2c-57e7-43da-8c3b-2c08f5b36875",
+          },
+          {
+            label: "Middle Name",
+            tableView: true,
+            key: "MiddleName",
+            type: "textfield",
+            input: true,
+            columnMetadataId: "6248f58c-dd3a-4ac7-92bb-942b5c24774c",
+          },
+          {
+            label: "NtsServiceId",
+            tableView: true,
+            key: "NtsServiceId",
+            type: "textfield",
+            input: true,
+            columnMetadataId: "dbbeceb5-48b1-4299-94de-aa3d3f5c6b05",
+          },
+        ],
+      };
+
+      // Replace this URL with your actual Form.io project form URL
+      // const formUrl =
+      //   "https://erpweb.aitalkx.com/Template/ManageTemplate?templateId=40f4d7a1-9da3-4380-8e5f-718832df70a1";
+
+      const urrrrrl = JSON.parse(
+        '{\n  "display": "form",\n  "components": [\n    {\n      "label": "Table",\n      "cellAlignment": "left",\n      "key": "table",\n      "type": "table",\n      "input": false,\n      "tableView": false,\n      "rows": [\n        [\n          {\n            "components": [\n              {\n                "label": "Radio",\n                "optionsLabelPosition": "right",\n                "inline": false,\n                "tableView": false,\n                "dataSrc": "url",\n                "validateWhenHidden": false,\n                "key": "radio",\n                "type": "radio",\n                "data": {\n                  "headers": [\n                    {\n                      "key": "",\n                      "value": ""\n                    }\n                  ]\n                },\n                "input": true,\n                "columnMetadataId": "a7a9c254-4a1f-413c-95df-0dea7050f166"\n              }\n            ]\n          },\n          {\n            "components": [\n              {\n                "label": "Submit",\n                "showValidations": false,\n                "tableView": false,\n                "key": "submit",\n                "type": "button",\n                "input": true,\n                "columnMetadataId": "4644de4b-b7a3-465d-ad0b-3dc9c41fe37c"\n              }\n            ]\n          },\n          {\n            "components": [\n              {\n                "label": "Checkbox",\n                "tableView": false,\n                "validateWhenHidden": false,\n                "key": "checkbox",\n                "type": "checkbox",\n                "input": true,\n                "columnMetadataId": "4d5c26ad-5aba-4c80-a629-36e6ae629f89"\n              }\n            ]\n          }\n        ],\n        [\n          {\n            "components": [\n              {\n                "label": "Submit",\n                "showValidations": false,\n                "tableView": false,\n                "key": "submit1",\n                "type": "button",\n                "input": true,\n                "columnMetadataId": "81bdb695-7e96-40eb-9458-eb40f8c3e3fe"\n              }\n            ]\n          },\n          {\n            "components": [\n              {\n                "label": "Number",\n                "applyMaskOn": "change",\n                "mask": false,\n                "tableView": false,\n                "delimiter": false,\n                "requireDecimal": false,\n                "inputFormat": "plain",\n                "truncateMultipleSpaces": false,\n                "validateWhenHidden": false,\n                "key": "number",\n                "type": "number",\n                "input": true,\n                "columnMetadataId": "7273a82d-e085-44e3-9be7-f05e8b62c43b"\n              }\n            ]\n          },\n          {\n            "components": [\n              {\n                "label": "Submit",\n                "showValidations": false,\n                "tableView": false,\n                "key": "submit2",\n                "type": "button",\n                "input": true,\n                "columnMetadataId": "6b79fffd-1350-4ca1-8546-77d1106d57fc"\n              }\n            ]\n          }\n        ],\n        [\n          {\n            "components": [\n              {\n                "label": "Number",\n                "applyMaskOn": "change",\n                "mask": false,\n                "tableView": false,\n                "delimiter": false,\n                "requireDecimal": false,\n                "inputFormat": "plain",\n                "truncateMultipleSpaces": false,\n                "validateWhenHidden": false,\n                "key": "number1",\n                "type": "number",\n                "input": true,\n                "columnMetadataId": "0dae2bd2-b0a9-45e7-ba08-7d4777b5e681"\n              }\n            ]\n          },\n          {\n            "components": [\n              {\n                "label": "Submit",\n                "showValidations": false,\n                "tableView": false,\n                "key": "submit3",\n                "type": "button",\n                "input": true,\n                "columnMetadataId": "b27dcea1-6f63-4b67-ab3b-891a2b929dcb"\n              }\n            ]\n          },\n          {\n            "components": [\n              {\n                "label": "Password",\n                "applyMaskOn": "change",\n                "tableView": false,\n                "validateWhenHidden": false,\n                "key": "password",\n                "type": "password",\n                "input": true,\n                "protected": true,\n                "columnMetadataId": "b668643c-3ffc-4f2f-b807-4120d672b4ea"\n              }\n            ]\n          }\n        ]\n      ]\n    },\n    {\n      "label": "Columns",\n      "columns": [\n        {\n          "components": [\n            {\n              "label": "Number",\n              "applyMaskOn": "change",\n              "mask": false,\n              "tableView": false,\n              "delimiter": false,\n              "requireDecimal": false,\n              "inputFormat": "plain",\n              "truncateMultipleSpaces": false,\n              "validateWhenHidden": false,\n              "key": "number2",\n              "type": "number",\n              "input": true,\n              "columnMetadataId": "e20cc98a-d5bc-48bf-83e9-fb359b983326"\n            }\n          ],\n          "width": 6,\n          "offset": 0,\n          "push": 0,\n          "pull": 0,\n          "size": "md",\n          "currentWidth": 6\n        },\n        {\n          "components": [\n            {\n              "label": "Number",\n              "applyMaskOn": "change",\n              "mask": false,\n              "tableView": false,\n              "delimiter": false,\n              "requireDecimal": false,\n              "inputFormat": "plain",\n              "truncateMultipleSpaces": false,\n              "validateWhenHidden": false,\n              "key": "number3",\n              "type": "number",\n              "input": true,\n              "columnMetadataId": "d295ed19-b91c-453f-aab8-2d98cd7f6f7c"\n            }\n          ],\n          "width": 6,\n          "offset": 0,\n          "push": 0,\n          "pull": 0,\n          "size": "md",\n          "currentWidth": 6\n        },\n        {\n          "components": [\n            {\n              "label": "Text Area",\n              "applyMaskOn": "change",\n              "autoExpand": false,\n              "tableView": true,\n              "validateWhenHidden": false,\n              "key": "textArea",\n              "type": "textarea",\n              "input": true,\n              "columnMetadataId": "819f1b3f-377d-41f5-8ba2-391cf00fad60"\n            },\n            {\n              "label": "Signature",\n              "tableView": false,\n              "validateWhenHidden": false,\n              "key": "signature",\n              "type": "signature",\n              "input": true,\n              "columnMetadataId": "d2dd7d2a-17d1-4467-9906-833bd94d97db"\n            },\n            {\n              "label": "Submit",\n              "showValidations": false,\n              "tableView": false,\n              "key": "submit4",\n              "type": "button",\n              "input": true,\n              "columnMetadataId": "8c4b7f79-5f1e-44de-a89e-6b686a2e5d90"\n            }\n          ],\n          "size": "md",\n          "width": 6,\n          "currentWidth": 6\n        }\n      ],\n      "key": "columns",\n      "type": "columns",\n      "input": false,\n      "tableView": false\n    }\n  ]\n}'
+      );
+
+      // Load and render the form
+      Formio.createForm(document.getElementById("formio"), urrrrrl).then(
+        function (form) {
+          // Optional: handle form submission
+          form.on("submit", function (submission) {
+            alert(
+              "Form submitted!\n" + JSON.stringify(submission.data, null, 2)
+            );
+          });
+        }
+      );
+    </script>
+  </body>
+</html>

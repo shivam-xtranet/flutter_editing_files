@@ -157,6 +157,57 @@ class _MyHomePageState extends State<MyHomePage> {
               },
               child: Text('Doc Editor'),
             ),
+
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder:
+                        (context) => HtmlRenderScreem(
+                          indexFile: "assets/pdf_editor.html",
+                        ),
+                  ),
+                );
+              },
+              child: Text('PDF Editor'),
+            ),
+
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder:
+                        (context) => HtmlRenderScreem(
+                          indexFile: "assets/pdf_editor_two.html",
+                        ),
+                  ),
+                );
+              },
+              child: Text('PDF Editor Two'),
+            ),
+
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder:
+                        (context) => HtmlRenderScreem(
+                          indexFile: "assets/custom_form.html",
+                        ),
+                  ),
+                );
+              },
+              child: Text('Form.IO'),
+            ),
           ],
         ),
       ),

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script src="https://unpkg.com/pdf-lib@1.4.0"></script>
+    <script src="https://unpkg.com/downloadjs@1.4.7"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+      }
+
+      h2 {
+        margin-bottom: 10px;
+      }
+
+      input[type="file"],
+      input[type="text"],
+      button {
+        margin: 10px;
+        padding: 10px;
+        font-size: 16px;
+        width: 300px;
+      }
+
+      button {
+        background-color: #008cba;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      canvas {
+        margin-top: 20px;
+        border: 1px solid #ccc;
+        max-width: 90vw;
+        height: auto;
+      }
+
+      .small {
+        font-size: 14px;
+        color: gray;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2>PDF Annotator</h2>
+    <input type="file" id="pdf-upload" accept="application/pdf" />
+    <input type="text" id="text-input" placeholder="Enter annotation text" />
+    <button onclick="annotatePdf()">Annotate and Download PDF</button>
+    <p class="small">
+      (Only first page is previewed. Annotation added at top.)
+    </p>
+    <canvas id="pdf-canvas"></canvas>
+
+    <script>
+      const { degrees, PDFDocument, rgb, StandardFonts } = PDFLib;
+      let uploadedPdfBytes = null;
+
+      document
+        .getElementById("pdf-upload")
+        .addEventListener("change", async function (e) {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = async function () {
+            uploadedPdfBytes = new Uint8Array(reader.result);
+
+            const loadingTask = pdfjsLib.getDocument({
+              data: uploadedPdfBytes,
+            });
+            const pdf = await loadingTask.promise;
+            const page = await pdf.getPage(1);
+
+            const scale = 1.2;
+            const viewport = page.getViewport({ scale });
+
+            const canvas = document.getElementById("pdf-canvas");
+            const context = canvas.getContext("2d");
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            await page.render({ canvasContext: context, viewport }).promise;
+          };
+          reader.readAsArrayBuffer(file);
+        });
+
+      async function annotatePdf() {
+        if (!uploadedPdfBytes) {
+          alert("Please upload a PDF first.");
+          return;
+        }
+
+        const userText = document.getElementById("text-input").value;
+        if (!userText.trim()) {
+          alert("Please enter text to annotate.");
+          return;
+        }
+
+        const pdfDoc = await PDFDocument.load(uploadedPdfBytes);
+        const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const pages = pdfDoc.getPages();
+        const firstPage = pages[0];
+        const { width, height } = firstPage.getSize();
+
+        firstPage.drawText(userText, {
+          x: 5,
+          y: height / 2 + 300,
+          size: 50,
+          font: helveticaFont,
+          color: rgb(0.95, 0.1, 0.1),
+          rotate: degrees(-45),
+        });
+
+        const modifiedPdfBytes = await pdfDoc.save();
+
+        download(modifiedPdfBytes, "annotated_pdf.pdf", "application/pdf");
+      }
+    </script>
+  </body>
+</html>
