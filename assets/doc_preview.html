@@ -1,85 +1,264 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>DOCX Viewer</title>
+  <title>DOCX Editor</title>
   <style>
+    :root {
+      --bg: #0b1020;
+      --ink: #eaf0ff;
+      --muted: #98a2b3;
+      --accent: #5b9aff;
+      --card: #141a33;
+    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: sans-serif;
-      background: #0b1020;
-      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
+      background: var(--bg);
+      color: var(--ink);
     }
-    #controls {
-      background: #141a33;
-      padding: 12px;
-      text-align: right;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+
+    /* toolbar */
+    #toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      background: #0d1330;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      align-items: center;
+      flex-wrap: wrap;
     }
-    button {
+
+    button, .btn {
       background: #1d2647;
-      color: white;
-      border: none;
-      padding: 8px 14px;
-      border-radius: 6px;
+      color: var(--ink);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
       cursor: pointer;
+      transition: all 0.2s ease;
     }
-    button:hover { background: #22305a; }
-    #editor {
-      height: 90vh;
+    button:hover { 
+      background: #22305a; 
+      transform: translateY(-1px);
+    }
+    
+    #btnDownloadDocx {
+      background: #2d4ec7;
+      margin-left: 10px;
+      font-weight: bold;
+    }
+    #btnDownloadDocx:hover {
+      background: #3a5ce7;
+    }
+
+    /* editor container */
+    #editor-wrap {
+      padding: 18px;
+      height: calc(100vh - 60px);
       overflow: auto;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: linear-gradient(180deg, rgba(0,0,0,0.03), transparent);
+    }
+    
+    /* each page */
+    .page {
       background: white;
       color: black;
       padding: 40px;
+      margin: 20px auto;
+      max-width: 800px;
+      min-height: 1123px; /* A4 at 96dpi */
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      position: relative;
+      page-break-after: always;
+      overflow: hidden;
+      border-radius: 4px;
+    }
+
+    /* make inner content editable */
+    #editor {
+      width: 100%;
+      min-height: 100%;
+      outline: none;
+    }
+
+    /* small hints */
+    .hint { 
+      font-size: 12px; 
+      color: var(--muted); 
+      margin-left: 8px; 
+    }
+    
+    .divider {
+      height: 24px;
+      width: 1px;
+      background: rgba(255,255,255,0.1);
+      margin: 0 8px;
+    }
+    
+    .toolbar-group {
+      display: flex;
+      gap: 6px;
+      align-items: center;
     }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <button id="btnDownloadDocx">Download as DOCX</button>
+  <!-- toolbar with download button -->
+  <div id="toolbar">
+    <div class="toolbar-group">
+      <button data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+      <button data-cmd="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+      <button data-cmd="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="toolbar-group">
+      <button data-cmd="insertUnorderedList" title="Bullet List">• List</button>
+      <button data-cmd="insertOrderedList" title="Numbered List">1. List</button>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="toolbar-group">
+      <button id="h1" title="Heading 1">H1</button>
+      <button id="h2" title="Heading 2">H2</button>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="toolbar-group">
+      <button data-cmd="justifyLeft" title="Align Left">⎡⎣</button>
+      <button data-cmd="justifyCenter" title="Align Center">⎢⎢</button>
+      <button data-cmd="justifyRight" title="Align Right">⎤⎦</button>
+    </div>
+    
+    <div style="flex: 1;"></div>
+    
+    <button id="btnDownloadDocx" title="Download DOCX">Download DOCX</button>
   </div>
-  <div id="editor">Waiting for DOCX...</div>
 
-  <!-- Libraries -->
+  <!-- editor area -->
+  <div id="editor-wrap">
+    <div id="editor-container" style="width:100%; display:flex; justify-content:center;">
+      <div id="editor" class="page" contenteditable="true">
+        <h1 style="margin-top:0; color: #2d4ec7;">DOCX Editor</h1>
+        <p>This is a simple document editor. You can:</p>
+        <ul>
+          <li>Edit text using the toolbar above</li>
+          <li>Format text with bold, italic, underline</li>
+          <li>Create lists and headings</li>
+          <li>Download your document as a DOCX file</li>
+        </ul>
+        <p>To get started, simply edit this text or load a document via base64.</p>
+        <p class="hint" style="color:#666">Use the Download DOCX button when you're ready to save your work.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- libs -->
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.0/mammoth.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
 
   <script>
-    const editor = document.getElementById("editor");
-    let lastBuffer = null;
+    // helpers & references
+    const $ = (sel) => document.querySelector(sel);
+    const editorContainer = $("#editor-container");
 
-    // Convert base64 → ArrayBuffer
+    // Base64 -> ArrayBuffer
     function base64ToArrayBuffer(base64) {
       const binary = atob(base64);
       const len = binary.length;
       const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
+      for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
       return bytes.buffer;
     }
 
-    // Render DOCX content into editor
-    async function renderArrayBuffer(buf) {
-      lastBuffer = buf;
-      const result = await mammoth.convertToHtml({ arrayBuffer: buf });
-      editor.innerHTML = result.value || "<p>[Empty document]</p>";
+    // Render ArrayBuffer
+    async function renderArrayBuffer(arrayBuffer) {
+      try {
+        const options = {
+          convertImage: mammoth.images.inline((image) =>
+            image.read("base64").then((imgBuf) => ({ src: "data:" + image.contentType + ";base64," + imgBuf }))
+          )
+        };
+
+        const result = await mammoth.convertToHtml({ arrayBuffer }, options);
+        const html = result.value || "<p>[Empty document]</p>";
+
+        // Wrap entire HTML in a single page
+        editorContainer.innerHTML = "";
+        
+        const page = document.createElement('div');
+        page.className = 'page';
+        page.innerHTML = html;
+        page.setAttribute('contenteditable', 'true');
+        editorContainer.appendChild(page);
+
+      } catch (err) {
+        console.error("renderArrayBuffer error", err);
+        alert("Failed to render document: " + (err.message || err));
+      }
     }
 
-    // Flutter will call this with base64 string
+    // Toolbar commands
+    document.querySelectorAll("[data-cmd]").forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cmd = btn.dataset.cmd;
+        document.execCommand(cmd, false, null);
+      });
+    });
+    
+    $("#h1").addEventListener('click', () => document.execCommand('formatBlock', false, 'h1'));
+    $("#h2").addEventListener('click', () => document.execCommand('formatBlock', false, 'h2'));
+
+    // Download edited content as DOCX
+    $("#btnDownloadDocx").addEventListener('click', () => {
+      try {
+        // Get content from the editor
+        const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${editorContainer.querySelector('.page').innerHTML}</body></html>`;
+        const converted = window.htmlDocx.asBlob(fullHtml);
+        saveAs(converted, "document.docx");
+        
+        // Show temporary feedback
+        const originalText = $("#btnDownloadDocx").textContent;
+        $("#btnDownloadDocx").textContent = "Downloaded!";
+        setTimeout(() => {
+          $("#btnDownloadDocx").textContent = originalText;
+        }, 1500);
+      } catch (err) {
+        console.error("Export failed", err);
+        alert("Export failed: " + (err.message || err));
+      }
+    });
+
+    // Flutter -> JS entry: load base64 string
     window.loadDocFromFlutter = async function(base64) {
-      const buf = base64ToArrayBuffer(base64);
-      await renderArrayBuffer(buf);
+      if (!base64) return;
+      try {
+        const buf = base64ToArrayBuffer(base64);
+        await renderArrayBuffer(buf);
+      } catch (err) {
+        console.error("loadDocFromFlutter error", err);
+        alert("Failed to load document from Flutter: " + (err.message || err));
+      }
     };
 
-    // Download current editor content as DOCX
-    document.getElementById("btnDownloadDocx").addEventListener("click", () => {
-      const fullHtml = `
-        <!DOCTYPE html>
-        <html><body>${editor.innerHTML}</body></html>`;
-      const converted = window.htmlDocx.asBlob(fullHtml);
-      saveAs(converted, "document.docx");
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        switch(e.key) {
+          case 'b': e.preventDefault(); document.execCommand('bold'); break;
+          case 'i': e.preventDefault(); document.execCommand('italic'); break;
+          case 'u': e.preventDefault(); document.execCommand('underline'); break;
+        }
+      }
     });
   </script>
 </body>
