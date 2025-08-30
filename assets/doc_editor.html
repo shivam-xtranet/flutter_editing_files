@@ -176,6 +176,14 @@
           <button id="btnLoadUrl">Open from URL</button>
           <span class="hint">Note: the URL must allow CORS</span>
         </div>
+
+         <div class="row">
+    <textarea id="bytesInput" placeholder="Paste Base64 fileBytes here"
+      style="min-width: 360px; height:80px; flex:1;"></textarea>
+    <button id="btnLoadBytes">Open from Bytes</button>
+  </div>
+  <span class="hint">Paste Base64-encoded fileBytes (from Flutter) and render</span>
+
       </section>
 
       <section class="card" style="margin-bottom: 12px">
@@ -211,6 +219,9 @@
           </div>
         </div>
       </section>
+
+ 
+
     </main>
 
     <!-- 🔹 JS Libraries -->
@@ -275,6 +286,36 @@
           setStatus("Failed to load (CORS issue).");
         }
       });
+
+
+  function base64ToArrayBuffer(base64) {
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  // load from bytes input
+  $("#btnLoadBytes").addEventListener("click", async () => {
+    const base64 = $("#bytesInput").value.trim();
+    if (!base64) {
+      alert("Paste fileBytes first.");
+      return;
+    }
+    try {
+      setStatus("Decoding Base64…");
+      const buf = base64ToArrayBuffer(base64);
+      await renderArrayBuffer(buf);
+      setStatus("Loaded from Base64");
+    } catch (err) {
+      console.error(err);
+      setStatus("Error decoding Base64");
+    }
+  });
+
 
       async function readDocxFile(file) {
         setStatus("Reading " + file.name + "…");

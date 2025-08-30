@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>DOCX Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #0b1020;
+      color: #fff;
+    }
+    #controls {
+      background: #141a33;
+      padding: 12px;
+      text-align: right;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    button {
+      background: #1d2647;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #22305a; }
+    #editor {
+      height: 90vh;
+      overflow: auto;
+      background: white;
+      color: black;
+      padding: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="btnDownloadDocx">Download as DOCX</button>
+  </div>
+  <div id="editor">Waiting for DOCX...</div>
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.0/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
+
+  <script>
+    const editor = document.getElementById("editor");
+    let lastBuffer = null;
+
+    // Convert base64 → ArrayBuffer
+    function base64ToArrayBuffer(base64) {
+      const binary = atob(base64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    // Render DOCX content into editor
+    async function renderArrayBuffer(buf) {
+      lastBuffer = buf;
+      const result = await mammoth.convertToHtml({ arrayBuffer: buf });
+      editor.innerHTML = result.value || "<p>[Empty document]</p>";
+    }
+
+    // Flutter will call this with base64 string
+    window.loadDocFromFlutter = async function(base64) {
+      const buf = base64ToArrayBuffer(base64);
+      await renderArrayBuffer(buf);
+    };
+
+    // Download current editor content as DOCX
+    document.getElementById("btnDownloadDocx").addEventListener("click", () => {
+      const fullHtml = `
+        <!DOCTYPE html>
+        <html><body>${editor.innerHTML}</body></html>`;
+      const converted = window.htmlDocx.asBlob(fullHtml);
+      saveAs(converted, "document.docx");
+    });
+  </script>
+</body>
+</html>
