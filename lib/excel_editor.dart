@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -69,6 +71,57 @@ class _ExcelEditorState extends State<ExcelEditor> {
       print("Error loading Excel: $e");
     }
   }
+
+
+Future<void> loadExcelFromBase64(String base64String) async {
+  try {
+    // Decode base64 string to bytes
+    final bytes = base64Decode(base64String);
+    
+    // Decode Excel bytes
+    final excel = Excel.decodeBytes(bytes);
+
+    // Get the first sheet
+    final sheet = excel.tables[excel.tables.keys.first]!;
+    final List<List<Data?>> sheetData = sheet.rows;
+
+    // Create columns from the first row
+    List<PlutoColumn> cols = [];
+    for (int i = 0; i < sheetData.first.length; i++) {
+      final cellValue = sheetData.first[i]?.value ?? '';
+      cols.add(
+        PlutoColumn(
+          title: cellValue.toString(),
+          field: 'col$i',
+          type: PlutoColumnType.text(),
+        ),
+      );
+    }
+
+    // Create rows from the remaining data
+    List<PlutoRow> plutoRows = [];
+    for (int r = 1; r < sheetData.length; r++) {
+      plutoRows.add(
+        PlutoRow(
+          cells: {
+            for (int c = 0; c < sheetData[r].length; c++)
+              'col$c': PlutoCell(
+                value: sheetData[r][c]?.value?.toString() ?? '',
+              ),
+          },
+        ),
+      );
+    }
+
+    // Update state with new data
+    setState(() {
+      columns = cols;
+      rows = plutoRows;
+    });
+  } catch (e) {
+    print("Error loading Excel from base64: $e");
+  }
+}
 
   void saveExcelWeb(
     List<PlutoRow> rows,

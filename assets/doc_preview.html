@@ -165,6 +165,7 @@
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.0/mammoth.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@7.0.0/build/index.min.js"></script>
 
   <script>
     // helpers & references
@@ -219,24 +220,153 @@
     $("#h2").addEventListener('click', () => document.execCommand('formatBlock', false, 'h2'));
 
     // Download edited content as DOCX
-    $("#btnDownloadDocx").addEventListener('click', () => {
-      try {
-        // Get content from the editor
-        const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${editorContainer.querySelector('.page').innerHTML}</body></html>`;
-        const converted = window.htmlDocx.asBlob(fullHtml);
-        saveAs(converted, "document.docx");
-        
-        // Show temporary feedback
-        const originalText = $("#btnDownloadDocx").textContent;
-        $("#btnDownloadDocx").textContent = "Downloaded!";
-        setTimeout(() => {
-          $("#btnDownloadDocx").textContent = originalText;
-        }, 1500);
-      } catch (err) {
-        console.error("Export failed", err);
-        alert("Export failed: " + (err.message || err));
-      }
+ // Download edited content as DOCX
+// Download edited content as DOCX
+// $("#btnDownloadDocx").addEventListener("click", () => {
+//   try {
+//     // Clone editor content
+//     const editorClone = editorContainer.cloneNode(true);
+
+//     // Collect all .page innerHTML
+//     const pages = editorClone.querySelectorAll(".page");
+//     let combinedHTML = "";
+
+//     if (pages.length > 0) {
+//       pages.forEach((page) => {
+//         combinedHTML += page.innerHTML;
+//       });
+//     } else {
+//       // fallback: export full editor content if no .page wrappers exist
+//       combinedHTML = editorClone.innerHTML;
+//     }
+
+//     // Wrap with body that has inline-safe defaults
+//     const fullHtml = `
+//       <!DOCTYPE html>
+//       <html>
+//         <head><meta charset="utf-8"></head>
+//         <body style="font-family: Arial, sans-serif; font-size:14px; color:#000; line-height:1.5;">
+//           ${combinedHTML}
+//         </body>
+//       </html>
+//     `;
+
+//     // Convert to docx
+//     const converted = window.htmlDocx.asBlob(fullHtml);
+//     saveAs(converted, "document.docx");
+
+//     // Feedback on button
+//     const originalText = $("#btnDownloadDocx").textContent;
+//     $("#btnDownloadDocx").textContent = "Downloaded!";
+//     setTimeout(() => {
+//       $("#btnDownloadDocx").textContent = originalText;
+//     }, 1500);
+//   } catch (err) {
+//     console.error("Export failed", err);
+//     alert("Export failed: " + (err.message || err));
+//   }
+// });
+
+function parseHtmlToDocx(htmlString) {
+  const { Paragraph, TextRun, HeadingLevel } = docx;
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = htmlString;
+
+  const children = [];
+
+  function processInline(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return [new TextRun({ text: node.textContent })];
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return [];
+
+    let isBold = node.tagName === "B" || node.tagName === "STRONG";
+    let isItalic = node.tagName === "I" || node.tagName === "EM";
+
+    let runs = [];
+    node.childNodes.forEach(child => {
+      runs.push(...processInline(child));
     });
+
+    return runs.map(run => {
+      run.bold = isBold || run.bold;
+      run.italics = isItalic || run.italics;
+      return run;
+    });
+  }
+
+  function processNode(node, listLevel = 0, isNumbered = false) {
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    const tag = node.tagName;
+
+    // Headings
+    if (tag === "H1") {
+      children.push(new Paragraph({ text: node.textContent, heading: HeadingLevel.HEADING_1 }));
+      return;
+    }
+    if (tag === "H2") {
+      children.push(new Paragraph({ text: node.textContent, heading: HeadingLevel.HEADING_2 }));
+      return;
+    }
+
+    // Paragraphs
+    if (tag === "P") {
+      children.push(new Paragraph({ children: processInline(node) }));
+      return;
+    }
+
+    // Lists
+    if (tag === "UL" || tag === "OL") {
+      const numbered = tag === "OL";
+      node.querySelectorAll("li").forEach(li => processNode(li, listLevel, numbered));
+      return;
+    }
+
+    if (tag === "LI") {
+      children.push(new Paragraph({
+        children: processInline(node),
+        bullet: !isNumbered ? { level: listLevel } : undefined,
+        numbering: isNumbered ? { reference: "numbered-list", level: listLevel } : undefined,
+      }));
+      return;
+    }
+
+    // Default: process children
+    node.childNodes.forEach(child => processNode(child, listLevel, isNumbered));
+  }
+
+  tempDiv.childNodes.forEach(node => processNode(node));
+  return children;
+}
+
+// Export function
+$("#btnDownloadDocx").addEventListener("click", () => {
+  try {
+    const { Document, Packer } = docx;
+    const html = editorContainer.innerHTML;
+
+    const paragraphs = parseHtmlToDocx(html);
+
+    const doc = new Document({ sections: [{ children: paragraphs }] });
+
+    Packer.toBlob(doc).then(blob => {
+      saveAs(blob, "document.docx");
+
+      const originalText = $("#btnDownloadDocx").textContent;
+      $("#btnDownloadDocx").textContent = "Downloaded!";
+      setTimeout(() => {
+        $("#btnDownloadDocx").textContent = originalText;
+      }, 1500);
+    });
+
+  } catch (err) {
+    console.error(err);
+    alert("Export failed: " + (err.message || err));
+  }
+});
+
+
 
     // Flutter -> JS entry: load base64 string
     window.loadDocFromFlutter = async function(base64) {
