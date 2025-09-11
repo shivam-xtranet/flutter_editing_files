@@ -26,7 +26,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        pointer-events: none; /* disable pointer events on container to allow canvas interaction */
+        /*  pointer-events: none;  disable pointer events on container to allow canvas interaction */
       }
       .annotation {
         position: absolute;
@@ -34,12 +34,14 @@
         border: 1px dashed #ccc;
         padding: 4px 8px;
         cursor: move;
-        pointer-events: auto; /* enable interaction on annotation */
+        pointer-events: auto;
         user-select: text;
-        min-width: 60px;
-        min-height: 20px;
+        min-width: 200px;
+        min-height: 100px;
         resize: both;
         overflow: auto;
+        font-size: 30px;
+        font-weight: 500;
       }
     </style>
   </head>
@@ -67,6 +69,7 @@
       let pdfDoc = null;
       let currentScale = 1.5;
       let pages = []; // store page info {container, canvas, annotationLayer, viewport}
+      let addMode = false;
 
       btnLoad.addEventListener("click", async () => {
         if (!fileInput.files || !fileInput.files[0]) {
@@ -121,7 +124,6 @@
           alert("Load a PDF first!");
           return;
         }
-        // Add annotation to the first page for demo
         const { annotationLayer } = pages[0];
 
         const annotation = document.createElement("div");
@@ -133,11 +135,76 @@
         annotation.style.height = "40px";
         annotation.textContent = "Edit me";
 
-        makeDraggable(annotation);
-
+        makeDraggable(annotation); // your existing drag function
         annotationLayer.appendChild(annotation);
         annotation.focus();
       });
+
+      // btnAddAnnotation.addEventListener("click", () => {
+      //   if (pages.length === 0) {
+      //     alert("Load a PDF first!");
+      //     return;
+      //   }
+      //   // Add annotation to the first page for demo
+      // pages.forEach((p, index) => {
+      //   p.annotationLayer.addEventListener("click", (ev) => {
+      //     // mouse position relative to that page
+      //     const rect = p.annotationLayer.getBoundingClientRect();
+      //     const x = ev.clientX - rect.left;
+      //     const y = ev.clientY - rect.top;
+
+      //     const annotation = document.createElement("div");
+      //     annotation.className = "annotation";
+      //     annotation.contentEditable = true;
+      //     annotation.style.top = y + "px";
+      //     annotation.style.left = x + "px";
+      //     annotation.style.width = "120px";
+      //     annotation.style.height = "40px";
+      //     annotation.textContent = "Edit me";
+
+      //     makeDraggable(annotation);
+      //     p.annotationLayer.appendChild(annotation);
+      //     annotation.focus();
+      //   });
+      // });
+      // });
+
+      // let addMode = false;
+
+      // btnAddAnnotation.addEventListener("click", () => {
+      //   addMode = true; // next click adds annotation
+      //   btnAddAnnotation.textContent = "Click on a page to place annotation…";
+      // });
+
+      // pages.forEach((p) => {
+      //   p.pageContainer.addEventListener("click", (ev) => {
+      //     if (!addMode) return; // only when in add mode
+      //     addMode = false;
+      //     btnAddAnnotation.textContent = "Add Annotation";
+
+      //     const rect = p.pageContainer.getBoundingClientRect();
+      //     const x = ev.clientX - rect.left;
+      //     const y = ev.clientY - rect.top;
+
+      //     const annotation = createAnnotation(x, y);
+      //     p.annotationLayer.appendChild(annotation);
+      //     annotation.focus();
+      //   });
+      // });
+
+      // function createAnnotation(x, y) {
+      //   const annotation = document.createElement("div");
+      //   annotation.className = "annotation";
+      //   annotation.contentEditable = true;
+      //   annotation.style.top = y + "px";
+      //   annotation.style.left = x + "px";
+      //   annotation.style.width = "120px";
+      //   annotation.style.height = "40px";
+      //   annotation.textContent = "Edit me";
+
+      //   makeDraggable(annotation);
+      //   return annotation;
+      // }
 
       const btnExport = document.getElementById("btnExport");
 
@@ -187,58 +254,47 @@
 
       // Make annotation draggable
       function makeDraggable(el) {
-        let isDragging = false;
-        let startX, startY, origX, origY;
+        let isDragging = false,
+          startX,
+          startY,
+          startLeft,
+          startTop;
 
         el.addEventListener("mousedown", (e) => {
-          if (e.target !== el) return; // only drag if clicked directly on div, not child text nodes
+          // Detect if we’re in the native resize zone:
+          const rect = el.getBoundingClientRect();
+          const cornerSize = 16; // px of bottom-right corner reserved for resize
+          const inResizeZone =
+            e.clientX > rect.right - cornerSize &&
+            e.clientY > rect.bottom - cornerSize;
+
+          if (inResizeZone) {
+            // let browser resize handle do its job, never set isDragging
+            return;
+          }
+
+          // Otherwise, start dragging
           isDragging = true;
           startX = e.clientX;
           startY = e.clientY;
+          startLeft = parseInt(el.style.left, 10) || 0;
+          startTop = parseInt(el.style.top, 10) || 0;
 
-          const rect = el.getBoundingClientRect();
-          origX = rect.left;
-          origY = rect.top;
-
-          // Need to subtract parent's offset:
-          const parentRect = el.parentElement.getBoundingClientRect();
-          origX -= parentRect.left;
-          origY -= parentRect.top;
-
-          el.style.cursor = "grabbing";
-
-          e.preventDefault();
+          document.addEventListener("mousemove", onMouseMove);
+          document.addEventListener("mouseup", onMouseUp);
         });
 
-        window.addEventListener("mousemove", (e) => {
+        function onMouseMove(e) {
           if (!isDragging) return;
-          const dx = e.clientX - startX;
-          const dy = e.clientY - startY;
+          el.style.left = startLeft + (e.clientX - startX) + "px";
+          el.style.top = startTop + (e.clientY - startY) + "px";
+        }
 
-          let newX = origX + dx;
-          let newY = origY + dy;
-
-          // Clamp within parent bounds
-          const parent = el.parentElement;
-          const parentRect = parent.getBoundingClientRect();
-          const elRect = el.getBoundingClientRect();
-
-          newX = Math.max(0, Math.min(newX, parentRect.width - elRect.width));
-          newY = Math.max(0, Math.min(newY, parentRect.height - elRect.height));
-
-          el.style.left = newX + "px";
-          el.style.top = newY + "px";
-        });
-
-        window.addEventListener("mouseup", () => {
-          if (isDragging) {
-            isDragging = false;
-            el.style.cursor = "move";
-          }
-        });
-
-        // Initialize cursor style
-        el.style.cursor = "move";
+        function onMouseUp() {
+          isDragging = false;
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        }
       }
     </script>
   </body>
