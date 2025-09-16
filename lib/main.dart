@@ -7,6 +7,7 @@ import 'package:flutter_editing_files/doc_editor_html.dart';
 import 'package:flutter_editing_files/doc_viewer.dart';
 import 'package:flutter_editing_files/excel_editor.dart';
 import 'package:flutter_editing_files/file_viewer.dart';
+import 'package:flutter_editing_files/pdf_ff_viewer.dart';
 import 'package:flutter_editing_files/pdf_viewer.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -263,6 +264,29 @@ class _MyHomePageState extends State<MyHomePage> {
                 );
               },
               child: Text('Txt Preview'),
+            ),
+
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder:
+                        (context) => PdfJsViewerPage(
+                          pdfUrl:
+                              //     "https://kptcl.aitalkx.com/appapi/dms/Query/AttachmentPreview?fileId=9eb54b85-6fc1-4a7a-b240-862476ffc8d0",
+                              // "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
+                              "https://www.aeee.in/wp-content/uploads/2020/08/Sample-pdf.pdf",
+                          // "https://kptcl.aitalkx.com/appapi/dms/Query/DownloadMongoFileStream?fileId=5a624e0e-f8f8-42e2-beec-5a6cc2979f2a",
+                          // "https://kptcl.aitalkx.com/appapi/dms/Query/AttachmentPreview?fileId==5a624e0e-f8f8-42e2-beec-5a6cc2979f2a",
+                          // "https://kptcl.aitalkx.com/appapi/dms/Query/DownloadMongoFileStream?fileId=4fd5a015-f409-431a-a4ef-3a29330e9f91",
+                        ),
+                  ),
+                );
+              },
+              child: Text('pdf Preview'),
             ),
           ],
         ),

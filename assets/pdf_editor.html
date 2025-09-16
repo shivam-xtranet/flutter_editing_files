@@ -2,18 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>PDF with Editable Annotations</title>
+    <title>PDF with Editable Annotations → Export via pdf-lib (vector)</title>
     <style>
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial;
+        margin: 12px;
+      }
+      #controls {
+        margin-bottom: 8px;
+      }
       #container {
         position: relative;
-        max-width: 800px;
-        margin: 20px auto;
+        max-width: 1000px;
+        margin: 10px auto;
         border: 1px solid #ccc;
         padding: 10px;
+        background: #f8f8f8;
       }
       .page-container {
         position: relative;
-        margin-bottom: 30px;
+        margin-bottom: 28px;
       }
       canvas {
         display: block;
@@ -26,91 +35,148 @@
         left: 0;
         width: 100%;
         height: 100%;
-        /*  pointer-events: none;  disable pointer events on container to allow canvas interaction */
       }
       .annotation {
         position: absolute;
-        background: rgba(255, 255, 0, 0.5);
-        border: 1px dashed #ccc;
-        padding: 4px 8px;
+        background: rgba(255, 255, 4, 0.95);
+        border: 1px dashed #c1c1c1;
+        padding: 6px;
         cursor: move;
         pointer-events: auto;
         user-select: text;
-        min-width: 200px;
-        min-height: 100px;
+        min-width: 140px;
+        min-height: 50px;
         resize: both;
         overflow: auto;
-        font-size: 14px;
-        font-weight: 500;
+        font-size: 13px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }
-
+      .annotation-header {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 6px;
+        font-size: 12px;
+        color: #333;
+      }
+      .annotation-header input {
+        font-size: 12px;
+        padding: 2px 4px;
+      }
       .annotation-content {
         min-height: 40px;
         outline: none;
+        font-size: 13px;
       }
-
       .reply-box {
         display: none;
-        margin-top: 5px;
+        margin-top: 6px;
       }
-
       .reply-box textarea {
-        width: 95%;
-        height: 40px;
+        width: 98%;
+        height: 46px;
         resize: vertical;
       }
-
-      .reply-box button {
-        margin-top: 3px;
-        padding: 2px 6px;
+      .annotation button {
+        margin-top: 6px;
+        padding: 4px 6px;
+        font-size: 12px;
+      }
+      #pageRange {
+        width: 120px;
       }
     </style>
   </head>
   <body>
-    <input type="file" id="fileInput" accept="application/pdf" />
-    <button id="btnLoad">Load PDF</button>
-    <button id="btnAddAnnotation">Add Annotation</button>
-    <input id="pageRange" placeholder="e.g. 1 or 2-4" style="width: 120px" />
-    <button id="btnExtract">Extract Pages</button>
-    <button id="btnExport">Export PDF</button>
+    <div id="controls">
+      <input type="file" id="fileInput" accept="application/pdf" />
+      <button id="btnLoad">Load PDF</button>
+      <button id="btnAddAnnotation">Add Annotation</button>
+      <input id="pageRange" placeholder="e.g. 1 or 2-4" />
+      <button id="btnExtract">Extract Pages (pdfs)</button>
+      <button id="btnExport">Export PDF (pdf-lib, vector)</button>
+      <span style="margin-left: 12px; color: #555; font-size: 13px">
+        Tip: after adding annotations, hit Export. Export keeps original crisp
+        text.
+      </span>
+    </div>
 
     <div id="container"></div>
 
+    <!-- pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- pdf-lib -->
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <!-- html2canvas only used for Extract pages (optional) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- jsPDF used only for extract pages -> image PDF (optional) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+
     <script>
+      // Globals
       const container = document.getElementById("container");
       const fileInput = document.getElementById("fileInput");
       const btnLoad = document.getElementById("btnLoad");
       const btnAddAnnotation = document.getElementById("btnAddAnnotation");
+      const btnExport = document.getElementById("btnExport");
+      const btnExtract = document.getElementById("btnExtract");
+      const pageRangeInput = document.getElementById("pageRange");
 
       pdfjsLib.GlobalWorkerOptions.workerSrc =
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
 
       let pdfDoc = null;
-      let currentScale = 1.5;
-      let pages = []; // store page info {container, canvas, annotationLayer, viewport}
-      let addMode = false;
+      let currentScale = 1.5; // rendering scale for on-screen preview
+      let pages = []; // will store { pageContainer, canvas, annotationLayer, viewport }
+      let originalArrayBuffer = null; // bytes of loaded pdf file
 
+      // Load PDF from <input>
       btnLoad.addEventListener("click", async () => {
         if (!fileInput.files || !fileInput.files[0]) {
-          alert("Please select a PDF file first");
+          alert("Select a PDF file first");
           return;
         }
-
         const file = fileInput.files[0];
-        const arrayBuffer = await file.arrayBuffer();
+        originalArrayBuffer = await file.arrayBuffer();
+        await renderPDF(originalArrayBuffer);
+      });
 
+      async function extractPages(arrayBuffer, pageNumbers /* e.g. [1,3,4] */) {
+        const { PDFDocument } = PDFLib;
+
+        // Load original PDF
+        const srcDoc = await PDFDocument.load(arrayBuffer);
+
+        // Create new PDF
+        const newDoc = await PDFDocument.create();
+
+        // Copy specified pages (pdf-lib is 0-indexed)
+        const pagesToCopy = await newDoc.copyPages(
+          srcDoc,
+          pageNumbers.map((n) => n - 1)
+        );
+        pagesToCopy.forEach((p) => newDoc.addPage(p));
+
+        // Save
+        const newPdfBytes = await newDoc.save();
+        const blob = new Blob([newPdfBytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "extracted-pages.pdf";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+
+      async function renderPDF(arrayBuffer) {
         container.innerHTML = "";
         pages = [];
-
         pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
         for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
           const page = await pdfDoc.getPage(pageNum);
-
           const viewport = page.getViewport({ scale: currentScale });
 
           const pageContainer = document.createElement("div");
@@ -123,333 +189,428 @@
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           canvas.style.display = "block";
-
           pageContainer.appendChild(canvas);
 
+          // annotation overlay
           const annotationLayer = document.createElement("div");
           annotationLayer.className = "annotation-layer";
           annotationLayer.style.width = viewport.width + "px";
           annotationLayer.style.height = viewport.height + "px";
-
           pageContainer.appendChild(annotationLayer);
 
           container.appendChild(pageContainer);
 
           const ctx = canvas.getContext("2d");
-          await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+          await page.render({ canvasContext: ctx, viewport }).promise;
 
           pages.push({ pageContainer, canvas, annotationLayer, viewport });
         }
-      });
+      }
 
-      const btnExtract = document.getElementById("btnExtract");
-      const pageRangeInput = document.getElementById("pageRange");
-
-      btnExtract.addEventListener("click", async () => {
-        if (pages.length === 0) {
-          alert("Load a PDF first!");
-          return;
-        }
-
-        const val = pageRangeInput.value.trim();
-        if (!val) {
-          alert("Enter a page number or range (e.g. 1 or 2-4)");
-          return;
-        }
-
-        // Parse input: supports "3" or "2-5"
-        let selectedPages = [];
-        if (val.includes("-")) {
-          const parts = val.split("-").map((p) => parseInt(p, 10));
-          if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-            const start = Math.max(1, parts[0]);
-            const end = Math.min(pages.length, parts[1]);
-            for (let i = start; i <= end; i++) selectedPages.push(i);
-          } else {
-            alert("Invalid range");
-            return;
-          }
-        } else {
-          const num = parseInt(val, 10);
-          if (!isNaN(num) && num >= 1 && num <= pages.length) {
-            selectedPages.push(num);
-          } else {
-            alert("Invalid page number");
-            return;
-          }
-        }
-
-        // Generate PDF with only these pages
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-          unit: "px",
-          format: [pages[0].viewport.width, pages[0].viewport.height],
-        });
-
-        for (let i = 0; i < selectedPages.length; i++) {
-          const pageIndex = selectedPages[i] - 1; // array is 0-based
-          const page = pages[pageIndex];
-          const pageContainer = page.pageContainer;
-
-          const canvas = await html2canvas(pageContainer, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: "#fff",
-            logging: false,
-          });
-
-          const imgData = canvas.toDataURL("image/png");
-
-          if (i > 0) pdf.addPage([page.viewport.width, page.viewport.height]);
-
-          pdf.addImage(
-            imgData,
-            "PNG",
-            0,
-            0,
-            page.viewport.width,
-            page.viewport.height
-          );
-        }
-
-        pdf.save("extracted-pages.pdf");
-      });
-
+      // Add annotation button — creates an annotation on the first page by default
       btnAddAnnotation.addEventListener("click", () => {
         if (pages.length === 0) {
           alert("Load a PDF first!");
           return;
         }
-        const { annotationLayer } = pages[0];
+        const pageIndex = 0; // default to first page — you can expand to ask for page selection
+        createAnnotationAt(pages[pageIndex].annotationLayer, 20, 20);
+      });
 
+      // Create annotation helper
+      function createAnnotationAt(
+        annotationLayer,
+        leftPx,
+        topPx,
+        existingData
+      ) {
         const annotation = document.createElement("div");
         annotation.className = "annotation";
-        annotation.style.top = "20px";
-        annotation.style.left = "20px";
+        annotation.style.left = (leftPx || 20) + "px";
+        annotation.style.top = (topPx || 20) + "px";
+        annotation.style.width = "220px";
+        annotation.style.height = "110px";
 
-        // inner editable content
+        // header: name input + created label
+        const header = document.createElement("div");
+        header.className = "annotation-header";
+
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.placeholder = "Author";
+        nameInput.value = (existingData && existingData.author) || "";
+
+        const createdSpan = document.createElement("span");
+        const now =
+          existingData && existingData.createdStr
+            ? existingData.createdStr
+            : new Date().toLocaleString();
+        createdSpan.textContent = "Created: " + now;
+
+        // store dataset for export (ISO format)
+        annotation.dataset.created =
+          (existingData && existingData.createdISO) || new Date().toISOString();
+
+        header.appendChild(nameInput);
+        header.appendChild(createdSpan);
+
+        // main editable content
         const content = document.createElement("div");
         content.className = "annotation-content";
         content.contentEditable = true;
-        content.textContent = "Edit me";
+        content.textContent =
+          (existingData && existingData.text) || "Write your note...";
 
-        // reply button
+        // reply UI
         const replyBtn = document.createElement("button");
+        replyBtn.type = "button";
         replyBtn.textContent = "Reply";
 
-        // reply box
         const replyBox = document.createElement("div");
         replyBox.className = "reply-box";
         replyBox.innerHTML = `
-    <textarea placeholder="Write a reply..."></textarea><br>
-    <button class="send-reply">Send</button>
-  `;
+          <textarea placeholder="Write a reply..."></textarea><br>
+          <button class="send-reply" type="button">Send</button>
+        `;
 
         replyBtn.addEventListener("click", () => {
-          // toggle reply box
           replyBox.style.display =
             replyBox.style.display === "none" ? "block" : "none";
         });
 
-        // handle send
         replyBox.querySelector(".send-reply").addEventListener("click", () => {
           const txt = replyBox.querySelector("textarea").value.trim();
           if (txt) {
-            // append as new paragraph below content
             const p = document.createElement("p");
-            p.textContent = "Reply: " + txt;
+            p.textContent =
+              (nameInput.value ? nameInput.value + " replied: " : "Reply: ") +
+              txt;
             annotation.appendChild(p);
             replyBox.querySelector("textarea").value = "";
             replyBox.style.display = "none";
           }
         });
 
+        annotation.appendChild(header);
         annotation.appendChild(content);
         annotation.appendChild(replyBtn);
         annotation.appendChild(replyBox);
 
-        makeDraggable(annotation);
         annotationLayer.appendChild(annotation);
-        content.focus();
+        makeDraggable(annotation);
+        // focus first input
+        nameInput.focus();
+
+        return annotation;
+      }
+
+      // Export using pdf-lib — draws text on original PDF pages (vector)
+      btnExport.addEventListener("click", async () => {
+        if (!originalArrayBuffer) {
+          alert("Load a PDF first");
+          return;
+        }
+        // Collect annotations from DOM
+        const annotations = []; // { pageIndex, leftPx, topPx, widthPx, heightPx, author, createdISO, createdStr, text }
+        pages.forEach((p, pageIndex) => {
+          const layer = p.annotationLayer;
+          layer.querySelectorAll(".annotation").forEach((el) => {
+            const leftPx = parseFloat(el.style.left) || 0;
+            const topPx = parseFloat(el.style.top) || 0;
+            const widthPx =
+              parseFloat(el.style.width) || el.getBoundingClientRect().width;
+            const heightPx =
+              parseFloat(el.style.height) || el.getBoundingClientRect().height;
+            const author =
+              el.querySelector(".annotation-header input")?.value || "Unknown";
+            const createdISO = el.dataset.created || new Date().toISOString();
+            const createdStr =
+              el
+                .querySelector(".annotation-header span")
+                ?.textContent.replace(/^Created:\s*/, "") ||
+              new Date(createdISO).toLocaleString();
+            const text =
+              el.querySelector(".annotation-content")?.innerText || "";
+
+            annotations.push({
+              pageIndex,
+              leftPx,
+              topPx,
+              widthPx,
+              heightPx,
+              author,
+              createdISO,
+              createdStr,
+              text,
+            });
+          });
+        });
+
+        if (annotations.length === 0) {
+          if (!confirm("No annotations found. Export original PDF unchanged?"))
+            return;
+        }
+
+        await exportWithPdfLib(originalArrayBuffer, annotations);
       });
 
-      // btnAddAnnotation.addEventListener("click", () => {
+      // Export function using pdf-lib
+      async function exportWithPdfLib(arrayBuffer, annotations) {
+        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+
+        // Embed Helvetica for readable text
+        const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+        // For coordinate conversion: we rendered preview pages with currentScale.
+        // screen px -> PDF points: divide by currentScale.
+        const scale = currentScale;
+
+        // Draw annotations
+        for (const ann of annotations) {
+          const page = pdfDoc.getPages()[ann.pageIndex];
+          const pageWidth = page.getWidth();
+          const pageHeight = page.getHeight();
+
+          // Convert left/top px (DOM) to PDF coordinate system (origin bottom-left)
+          const xPdf = ann.leftPx / scale;
+          // DOM top is distance from top; convert to bottom-left origin
+          const yPdf =
+            (pages[ann.pageIndex].viewport.height - ann.topPx) / scale;
+
+          // Optionally draw a subtle rectangle background for visibility
+          const rectWidthPdf = ann.widthPx / scale;
+          const rectHeightPdf = ann.heightPx / scale;
+
+          // Draw background rectangle (slightly translucent)
+          page.drawRectangle({
+            x: xPdf - 2,
+            y: yPdf - rectHeightPdf + 2,
+            width: rectWidthPdf + 4,
+            height: rectHeightPdf + 6,
+            color: rgb(1, 1, 0.8),
+            opacity: 0.5,
+            borderColor: rgb(0.6, 0.6, 0.4),
+            borderWidth: 0.5,
+          });
+
+          // Author + created line
+          const metaLine = `${ann.author} • ${new Date(
+            ann.createdISO
+          ).toLocaleString()}`;
+          page.drawText(metaLine, {
+            x: xPdf + 4,
+            y: yPdf - 4,
+            size: 9,
+            font: helveticaFont,
+            color: rgb(0.15, 0.15, 0.15),
+            maxWidth: rectWidthPdf - 8,
+          });
+
+          // Main annotation text (wrap manually — pdf-lib doesn't auto-wrap)
+          // We'll implement a simple wrapping by splitting into words and building lines.
+          const text = ann.text || "";
+          const maxWidth = rectWidthPdf - 8;
+          const fontSize = 11;
+          const words = text.split(/\s+/);
+          let line = "";
+          let cursorY = yPdf - 18; // below meta line
+          for (let i = 0; i < words.length; i++) {
+            const testLine = line ? line + " " + words[i] : words[i];
+            const testWidth = helveticaFont.widthOfTextAtSize(
+              testLine,
+              fontSize
+            );
+            if (testWidth > maxWidth && line) {
+              // draw current line
+              page.drawText(line, {
+                x: xPdf + 4,
+                y: cursorY,
+                size: fontSize,
+                font: helveticaFont,
+                color: rgb(0, 0, 0),
+              });
+              line = words[i];
+              cursorY -= fontSize + 2;
+            } else {
+              line = testLine;
+            }
+          }
+          // draw remaining
+          if (line) {
+            page.drawText(line, {
+              x: xPdf + 4,
+              y: cursorY,
+              size: fontSize,
+              font: helveticaFont,
+              color: rgb(0, 0, 0),
+            });
+          }
+        }
+
+        // Save PDF and trigger download
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "annotated.pdf";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+
+      async function extractPages(arrayBuffer, pageNumbers /* e.g. [1,3,4] */) {
+        const { PDFDocument } = PDFLib;
+
+        // Load original PDF
+        const srcDoc = await PDFDocument.load(arrayBuffer);
+
+        // Create new PDF
+        const newDoc = await PDFDocument.create();
+
+        // Copy specified pages (pdf-lib is 0-indexed)
+        const pagesToCopy = await newDoc.copyPages(
+          srcDoc,
+          pageNumbers.map((n) => n - 1)
+        );
+        pagesToCopy.forEach((p) => newDoc.addPage(p));
+
+        // Save
+        const newPdfBytes = await newDoc.save();
+        const blob = new Blob([newPdfBytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "extracted-pages.pdf";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+
+      // Optional: Extract pages as images (keeps annotations visually) — uses html2canvas + jsPDF
+      // btnExtract.addEventListener("click", async () => {
       //   if (pages.length === 0) {
-      //     alert("Load a PDF first!");
+      //     alert("Load a PDF first");
       //     return;
       //   }
-      //   const { annotationLayer } = pages[0];
+      //   const { jsPDF } = window.jspdf;
+      //   const pdf = new jsPDF({
+      //     unit: "px",
+      //     format: [pages[0].viewport.width, pages[0].viewport.height],
+      //   });
 
-      //   const annotation = document.createElement("div");
-      //   annotation.className = "annotation";
-      //   annotation.contentEditable = true;
-      //   annotation.style.top = "20px";
-      //   annotation.style.left = "20px";
-      //   annotation.style.width = "120px";
-      //   annotation.style.height = "40px";
-      //   annotation.textContent = "Edit me";
-
-      //   makeDraggable(annotation); // your existing drag function
-      //   annotationLayer.appendChild(annotation);
-      //   annotation.focus();
-      // });
-
-      // btnAddAnnotation.addEventListener("click", () => {
-      //   if (pages.length === 0) {
-      //     alert("Load a PDF first!");
-      //     return;
+      //   // support page range input "1" or "2-4"
+      //   let selectedPages = [];
+      //   const val = pageRangeInput.value.trim();
+      //   if (!val) {
+      //     for (let i = 1; i <= pages.length; i++) selectedPages.push(i);
+      //   } else if (val.includes("-")) {
+      //     const [s, e] = val.split("-").map((n) => parseInt(n, 10));
+      //     for (let i = Math.max(1, s); i <= Math.min(pages.length, e); i++)
+      //       selectedPages.push(i);
+      //   } else {
+      //     const n = parseInt(val, 10);
+      //     if (!isNaN(n) && n >= 1 && n <= pages.length) selectedPages.push(n);
       //   }
-      //   // Add annotation to the first page for demo
-      // pages.forEach((p, index) => {
-      //   p.annotationLayer.addEventListener("click", (ev) => {
-      //     // mouse position relative to that page
-      //     const rect = p.annotationLayer.getBoundingClientRect();
-      //     const x = ev.clientX - rect.left;
-      //     const y = ev.clientY - rect.top;
 
-      //     const annotation = document.createElement("div");
-      //     annotation.className = "annotation";
-      //     annotation.contentEditable = true;
-      //     annotation.style.top = y + "px";
-      //     annotation.style.left = x + "px";
-      //     annotation.style.width = "120px";
-      //     annotation.style.height = "40px";
-      //     annotation.textContent = "Edit me";
-
-      //     makeDraggable(annotation);
-      //     p.annotationLayer.appendChild(annotation);
-      //     annotation.focus();
-      //   });
+      //   for (let i = 0; i < selectedPages.length; i++) {
+      //     const idx = selectedPages[i] - 1;
+      //     const page = pages[idx];
+      //     const canvasCaptured = await html2canvas(page.pageContainer, {
+      //       scale: 2,
+      //       useCORS: true,
+      //       backgroundColor: "#fff",
+      //     });
+      //     const imgData = canvasCaptured.toDataURL("image/png");
+      //     if (i > 0) pdf.addPage([page.viewport.width, page.viewport.height]);
+      //     pdf.addImage(
+      //       imgData,
+      //       "PNG",
+      //       0,
+      //       0,
+      //       page.viewport.width,
+      //       page.viewport.height
+      //     );
+      //   }
+      //   pdf.save("extracted-pages.pdf");
       // });
-      // });
-
-      // let addMode = false;
-
-      // btnAddAnnotation.addEventListener("click", () => {
-      //   addMode = true; // next click adds annotation
-      //   btnAddAnnotation.textContent = "Click on a page to place annotation…";
-      // });
-
-      // pages.forEach((p) => {
-      //   p.pageContainer.addEventListener("click", (ev) => {
-      //     if (!addMode) return; // only when in add mode
-      //     addMode = false;
-      //     btnAddAnnotation.textContent = "Add Annotation";
-
-      //     const rect = p.pageContainer.getBoundingClientRect();
-      //     const x = ev.clientX - rect.left;
-      //     const y = ev.clientY - rect.top;
-
-      //     const annotation = createAnnotation(x, y);
-      //     p.annotationLayer.appendChild(annotation);
-      //     annotation.focus();
-      //   });
-      // });
-
-      // function createAnnotation(x, y) {
-      //   const annotation = document.createElement("div");
-      //   annotation.className = "annotation";
-      //   annotation.contentEditable = true;
-      //   annotation.style.top = y + "px";
-      //   annotation.style.left = x + "px";
-      //   annotation.style.width = "120px";
-      //   annotation.style.height = "40px";
-      //   annotation.textContent = "Edit me";
-
-      //   makeDraggable(annotation);
-      //   return annotation;
-      // }
-
-      const btnExport = document.getElementById("btnExport");
-
-      btnExport.addEventListener("click", async () => {
-        if (pages.length === 0) {
-          alert("Load a PDF and add annotations first!");
+      btnExtract.addEventListener("click", async () => {
+        if (!originalArrayBuffer) {
+          alert("Load a PDF first");
           return;
         }
 
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-          unit: "px",
-          format: [pages[0].viewport.width, pages[0].viewport.height],
-        });
-
-        for (let i = 0; i < pages.length; i++) {
-          const page = pages[i];
-          // Merge canvas + annotations by rendering page container div
-          const pageContainer = page.pageContainer;
-
-          // Use html2canvas to capture the page + annotations
-          const canvas = await html2canvas(pageContainer, {
-            scale: 2, // increase quality
-            useCORS: true,
-            backgroundColor: "#fff",
-            logging: false,
-          });
-
-          const imgData = canvas.toDataURL("image/png");
-
-          if (i > 0) {
-            pdf.addPage([page.viewport.width, page.viewport.height]);
-          }
-
-          pdf.addImage(
-            imgData,
-            "PNG",
-            0,
-            0,
-            page.viewport.width,
-            page.viewport.height
-          );
+        // parse user input page range e.g. "1-3"
+        let selectedPages = [];
+        const val = pageRangeInput.value.trim();
+        if (!val) {
+          for (let i = 1; i <= pages.length; i++) selectedPages.push(i);
+        } else if (val.includes("-")) {
+          const [s, e] = val.split("-").map((n) => parseInt(n, 10));
+          for (let i = Math.max(1, s); i <= Math.min(pages.length, e); i++)
+            selectedPages.push(i);
+        } else {
+          const n = parseInt(val, 10);
+          if (!isNaN(n) && n >= 1 && n <= pages.length) selectedPages.push(n);
         }
 
-        pdf.save("annotated.pdf");
+        // call extractPages from above
+        await extractPages(originalArrayBuffer, selectedPages);
       });
 
-      // Make annotation draggable
+      // make draggable and ignore native resize corner
       function makeDraggable(el) {
         let isDragging = false,
           startX,
           startY,
           startLeft,
           startTop;
-
         el.addEventListener("mousedown", (e) => {
-          // Detect if we’re in the native resize zone:
+          // if in bottom-right corner (native resize) ignore dragging
           const rect = el.getBoundingClientRect();
-          const cornerSize = 16; // px of bottom-right corner reserved for resize
-          const inResizeZone =
-            e.clientX > rect.right - cornerSize &&
-            e.clientY > rect.bottom - cornerSize;
-
-          if (inResizeZone) {
-            // let browser resize handle do its job, never set isDragging
-            return;
-          }
-
-          // Otherwise, start dragging
+          const corner = 16;
+          const inResize =
+            e.clientX > rect.right - corner && e.clientY > rect.bottom - corner;
+          if (inResize) return; // allow native resize
           isDragging = true;
           startX = e.clientX;
           startY = e.clientY;
-          startLeft = parseInt(el.style.left, 10) || 0;
-          startTop = parseInt(el.style.top, 10) || 0;
-
-          document.addEventListener("mousemove", onMouseMove);
-          document.addEventListener("mouseup", onMouseUp);
+          startLeft = parseFloat(el.style.left) || 0;
+          startTop = parseFloat(el.style.top) || 0;
+          document.addEventListener("mousemove", onMove);
+          document.addEventListener("mouseup", onUp);
         });
-
-        function onMouseMove(e) {
+        function onMove(e) {
           if (!isDragging) return;
           el.style.left = startLeft + (e.clientX - startX) + "px";
           el.style.top = startTop + (e.clientY - startY) + "px";
         }
-
-        function onMouseUp() {
+        function onUp() {
           isDragging = false;
-          document.removeEventListener("mousemove", onMouseMove);
-          document.removeEventListener("mouseup", onMouseUp);
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
         }
       }
+
+      // BONUS: allow clicking on a page to add annotation (toggle via holding Shift while clicking)
+      container.addEventListener("click", (ev) => {
+        if (!ev.shiftKey) return; // hold shift and click to add at position
+        // find page container clicked
+        for (let i = 0; i < pages.length; i++) {
+          const p = pages[i];
+          const rect = p.pageContainer.getBoundingClientRect();
+          if (
+            ev.clientX >= rect.left &&
+            ev.clientX <= rect.right &&
+            ev.clientY >= rect.top &&
+            ev.clientY <= rect.bottom
+          ) {
+            const x = ev.clientX - rect.left;
+            const y = ev.clientY - rect.top;
+            createAnnotationAt(p.annotationLayer, x, y);
+            break;
+          }
+        }
+      });
     </script>
   </body>
 </html>

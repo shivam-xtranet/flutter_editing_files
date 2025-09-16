@@ -46,7 +46,9 @@ class _DocTemplateEditorState extends State<DocTemplateEditor> {
 
     // Replace placeholder with edited text
     Content c = Content();
-    c.add(TextContent("name", _controller.text)); // assumes ${name} exists in template
+    c.add(
+      TextContent("name", _controller.text),
+    ); // assumes ${name} exists in template
 
     final d = await docx.generate(c);
     if (d == null) return;
@@ -54,9 +56,6 @@ class _DocTemplateEditorState extends State<DocTemplateEditor> {
     // Save/export for Web
     final blob = html.Blob([d]);
     final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute("download", "edited_template.docx")
-      ..click();
     html.Url.revokeObjectUrl(url);
   }
 
@@ -66,37 +65,38 @@ class _DocTemplateEditorState extends State<DocTemplateEditor> {
       appBar: AppBar(
         title: const Text("Doc Template Editor"),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _exportDoc,
-          ),
+          IconButton(icon: const Icon(Icons.save), onPressed: _exportDoc),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  const Text(
-                    "Edit Template Text",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      maxLines: null,
-                      expands: true,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: "Edit content here...",
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    const Text(
+                      "Edit Template Text",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        maxLines: null,
+                        expands: true,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: "Edit content here...",
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
     );
   }
 }

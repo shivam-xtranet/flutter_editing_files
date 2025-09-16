@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PDF + AcroForm Field Placer (pdf-lib + pdf.js)</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 16px;
+      }
+      .controls {
+        margin-bottom: 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      #viewer {
+        border: 1px solid #ccc;
+        padding: 8px;
+        max-width: 900px;
+      }
+      .page-container {
+        position: relative;
+        margin-bottom: 18px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0; /* click catcher */
+      }
+      .hint {
+        color: #666;
+        font-size: 13px;
+        margin-left: 6px;
+      }
+      #fieldsList {
+        margin-top: 8px;
+        font-size: 13px;
+        color: #333;
+      }
+      button,
+      input[type="file"] {
+        padding: 6px 10px;
+      }
+      label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>PDF → Add real AcroForm text fields (click to place)</h2>
+
+    <div class="controls">
+      <input type="file" id="fileInput" accept="application/pdf" />
+      <button id="btnLoad">Load PDF</button>
+      <button id="btnToggleAdd">Place field: OFF</button>
+      <label
+        ><input type="checkbox" id="replyCheckbox" /> Add reply field under
+        main</label
+      >
+      <button id="btnExport" disabled>Export PDF with fields</button>
+      <span class="hint"
+        >Click a page to place a text box. Fields are real AcroForm
+        fields.</span
+      >
+    </div>
+
+    <div id="viewer"></div>
+
+    <div id="fieldsList"></div>
+
+    <!-- pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- pdf-lib -->
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+
+    <script>
+      (function () {
+        const fileInput = document.getElementById("fileInput");
+        const btnLoad = document.getElementById("btnLoad");
+        const viewer = document.getElementById("viewer");
+        const btnToggleAdd = document.getElementById("btnToggleAdd");
+        const replyCheckbox = document.getElementById("replyCheckbox");
+        const btnExport = document.getElementById("btnExport");
+        const fieldsList = document.getElementById("fieldsList");
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+
+        let pdfBytes = null; // raw ArrayBuffer bytes of loaded PDF
+        let pdfJsDoc = null; // pdf.js document
+        let pdfLibDoc = null; // pdf-lib PDFDocument
+        let pageRenderings = []; // store {pageIndex, canvas, container, canvasWidth, canvasHeight}
+        let placingMode = false;
+        let placedFields = []; // meta about placed fields for UI and naming
+
+        // load file and render all pages
+        btnLoad.addEventListener("click", async () => {
+          if (!fileInput.files || !fileInput.files[0]) {
+            alert("Choose a PDF first");
+            return;
+          }
+          const f = fileInput.files[0];
+          pdfBytes = await f.arrayBuffer();
+
+          viewer.innerHTML = "";
+          pageRenderings = [];
+          placedFields = [];
+          updateFieldsList();
+          btnExport.disabled = true;
+
+          // load with pdf-lib (writer)
+          pdfLibDoc = await PDFLib.PDFDocument.load(pdfBytes);
+
+          // load with pdf.js (renderer)
+          pdfJsDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+          const numPages = pdfJsDoc.numPages;
+
+          // render at a reasonable scale to fit width
+          for (let p = 1; p <= numPages; p++) {
+            const page = await pdfJsDoc.getPage(p);
+            const viewport = page.getViewport({ scale: 1.5 }); // scale for on-screen clarity
+
+            const pageContainer = document.createElement("div");
+            pageContainer.className = "page-container";
+            pageContainer.style.width = viewport.width + "px";
+
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.floor(viewport.width);
+            canvas.height = Math.floor(viewport.height);
+            canvas.style.width = viewport.width + "px";
+
+            const ctx = canvas.getContext("2d");
+            await page.render({ canvasContext: ctx, viewport }).promise;
+
+            // overlay to capture clicks
+            const overlay = document.createElement("div");
+            overlay.className = "overlay";
+            overlay.style.width = canvas.width + "px";
+            overlay.style.height = canvas.height + "px";
+            overlay.style.cursor = "crosshair";
+
+            // append
+            pageContainer.appendChild(canvas);
+            pageContainer.appendChild(overlay);
+            viewer.appendChild(pageContainer);
+
+            // store mapping info
+            pageRenderings.push({
+              pageIndex: p - 1, // zero-based
+              canvas,
+              overlay,
+              canvasWidth: canvas.width,
+              canvasHeight: canvas.height,
+            });
+
+            // click handler for placing
+            overlay.addEventListener("click", (ev) => onPageClick(ev, p - 1));
+          }
+
+          btnExport.disabled = false;
+          alert(
+            'PDF loaded — click "Place field: ON" then click a page to add fields.'
+          );
+        });
+
+        // toggle placing mode
+        btnToggleAdd.addEventListener("click", () => {
+          placingMode = !placingMode;
+          btnToggleAdd.textContent = placingMode
+            ? "Place field: ON"
+            : "Place field: OFF";
+          btnToggleAdd.style.background = placingMode ? "#dff0d8" : "";
+        });
+
+        // handle page click
+        async function onPageClick(ev, pageIndex) {
+          if (!placingMode) return;
+          // find rendering info
+          const pr = pageRenderings.find((p) => p.pageIndex === pageIndex);
+          if (!pr) return;
+
+          // compute click position relative to canvas (client coords -> canvas coords)
+          const rect = pr.canvas.getBoundingClientRect();
+          const clickX = ev.clientX - rect.left;
+          const clickY = ev.clientY - rect.top;
+
+          // map to canvas pixel coords (account for CSS scaling)
+          const scaleX = pr.canvas.width / rect.width;
+          const scaleY = pr.canvas.height / rect.height;
+          const canvasX = clickX * scaleX;
+          const canvasY = clickY * scaleY;
+
+          // now convert canvas coords to pdf-lib points:
+          // get page size from pdf-lib
+          const pdfPage = pdfLibDoc.getPage(pageIndex);
+          const pdfWidth = pdfPage.getWidth();
+          const pdfHeight = pdfPage.getHeight();
+
+          // mapping:
+          // xPoints = (canvasX / canvasWidth) * pdfWidth
+          // yPoints (pdf origin bottom-left) = pdfHeight - (canvasY / canvasHeight) * pdfHeight
+          const xPoints = (canvasX / pr.canvasWidth) * pdfWidth;
+          const // We'll place the field such that its bottom-left corner matches desired y (so subtract height)
+            yPointsTopBased = (canvasY / pr.canvasHeight) * pdfHeight;
+
+          // choose field size in PDF points (you can adjust or let user choose)
+          const fieldWidth = pdfWidth * 0.25; // 25% of page width by default
+          const fieldHeight = Math.max(30, pdfHeight * 0.06); // ~6% height or min 30pts
+
+          // final bottom-left y coordinate:
+          const yPoints = pdfHeight - yPointsTopBased - fieldHeight;
+
+          // create and name field
+          const fieldName = `field_${placedFields.length + 1}`;
+          const { rgb } = PDFLib; // color helper from pdf-lib global
+          const form = pdfLibDoc.getForm();
+
+          // create text field, set default text
+          const textField = form.createTextField(fieldName);
+          textField.setText(""); // empty initial text
+          textField.enableReadOnly ? null : null; // no-op, just to show available methods
+
+          // Add appearance / style by adding to page with options
+          // addToPage takes { x, y, width, height, textColor, backgroundColor, borderColor, fontSize }
+          textField.addToPage(pdfLibDoc.getPage(pageIndex), {
+            x: xPoints,
+            y: yPoints,
+            width: fieldWidth,
+            height: fieldHeight,
+            textColor: rgb(0, 0, 0),
+            backgroundColor: rgb(1, 1, 0.85), // light yellow background
+            borderColor: rgb(0.5, 0.5, 0.5),
+            fontSize: 12,
+          });
+
+          // store meta
+          placedFields.push({
+            pageIndex,
+            name: fieldName,
+            x: xPoints,
+            y: yPoints,
+            width: fieldWidth,
+            height: fieldHeight,
+            type: "main",
+          });
+
+          // optionally add reply field directly below
+          if (replyCheckbox.checked) {
+            const replyName = `field_${placedFields.length + 1}_reply`;
+            const replyHeight = Math.max(24, fieldHeight * 0.8);
+            const replyX = xPoints + 8; // small indent
+            const replyY = yPoints - replyHeight - 8; // below main with gap
+
+            const replyField = form.createTextField(replyName);
+            replyField.setText("");
+            replyField.addToPage(pdfLibDoc.getPage(pageIndex), {
+              x: replyX,
+              y: replyY,
+              width: fieldWidth * 0.9,
+              height: replyHeight,
+              textColor: rgb(0, 0, 0),
+              backgroundColor: rgb(1, 1, 1), // white reply box
+              borderColor: rgb(0.6, 0.6, 0.6),
+              fontSize: 11,
+            });
+
+            placedFields.push({
+              pageIndex,
+              name: replyName,
+              x: replyX,
+              y: replyY,
+              width: fieldWidth * 0.9,
+              height: replyHeight,
+              type: "reply",
+            });
+          }
+
+          updateFieldsList();
+          // keep placing mode on so user can add multiple fields; user toggles OFF manually
+        }
+
+        // update list UI
+        function updateFieldsList() {
+          if (placedFields.length === 0) {
+            fieldsList.innerHTML = "<em>No fields placed yet.</em>";
+            return;
+          }
+          let html = "<strong>Placed fields:</strong><ul>";
+          placedFields.forEach((f, i) => {
+            html += `<li> ${i + 1}. ${f.name} — page ${f.pageIndex + 1} — ${
+              f.type
+            } — x:${Math.round(f.x)} y:${Math.round(f.y)} w:${Math.round(
+              f.width
+            )} h:${Math.round(f.height)}</li>`;
+          });
+          html += "</ul>";
+          fieldsList.innerHTML = html;
+        }
+
+        // export PDF (save pdfLibDoc with the created form fields)
+        btnExport.addEventListener("click", async () => {
+          if (!pdfLibDoc) {
+            alert("Load a PDF first");
+            return;
+          }
+
+          // pdf-lib requires calling form.flatten() only if you want to make them non-editable.
+          // We want them editable, so DO NOT flatten. Just save the doc as-is.
+          const pdfBytesOut = await pdfLibDoc.save();
+
+          // download using blob
+          const blob = new Blob([pdfBytesOut], { type: "application/pdf" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "pdf-with-forms.pdf";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+
+          alert(
+            "Export complete. Open the downloaded PDF in Acrobat/Chrome and you will see editable form fields."
+          );
+        });
+
+        // small UX: when input file changes, auto-load
+        fileInput.addEventListener("change", () => {
+          if (fileInput.files && fileInput.files[0]) {
+            // auto click load
+            btnLoad.click();
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
